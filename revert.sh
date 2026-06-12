@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-# Master revert — undoes all four layers. Pass --purge to also delete installed files.
+# Master revert — undoes all five layers. Pass --purge to also delete installed files.
 #   Layer 1 (base): there is no scripted revert; use System Settings → Global Theme →
 #   Breeze, then remove the dock panel. The other two layers revert cleanly below.
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PURGE="${1:-}"
+
+echo "── Layer 5: system QoL ──"
+bash "$HERE/5-system-qol/revert.sh" "$PURGE" || true
 
 echo "── Layer 4: login + lock screen ──"
 bash "$HERE/4-login-lock/revert.sh" || true
@@ -20,4 +23,4 @@ echo "   No scripted revert. To undo: System Settings → Global Theme → Breez
 echo "   then remove the dock panel (right-click → Enter Edit Mode → Remove Panel)."
 echo "   Restore the original dock gap from the panel-background .bak if present."
 
-echo; echo "Revert complete for layers 2, 3 & 4. Restart Qt apps to see changes."
+echo; echo "Revert complete for layers 2–5. Restart Qt apps to see changes."

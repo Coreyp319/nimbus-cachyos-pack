@@ -1,18 +1,20 @@
-# WhiteSur macOS-style desktop pack — CachyOS / KDE Plasma 6
+# WhiteSur CachyOS pack — macOS-style desktop + OS customization
 
-Turns a stock **CachyOS + KDE Plasma 6 (Wayland)** install into a cohesive
-macOS-style desktop. Four independent layers — install any subset.
+A personal **CachyOS + KDE Plasma 6 (Wayland)** customization. Layers 1–4 turn a
+stock install into a cohesive macOS-style desktop; Layer 5 adds general system
+quality-of-life that has nothing to do with the *look*. Five independent layers —
+install any subset.
 
 ```bash
 bash install.sh          # interactive, pick layers
-bash install.sh -y       # install all four, no prompts
+bash install.sh -y       # install all five, no prompts
 bash revert.sh           # undo (add --purge to delete installed files)
 ```
 
-> Run as your **normal user** (not root). `sudo` is used only for packages,
-> Layer 3's milou patch, and Layer 4's SDDM theming. **Log out / back in**
-> afterward to activate `Meta+Space`
-> and `Meta+Ctrl+T` (Wayland binds global shortcuts at login).
+> Run as your **normal user** (not root). `sudo` is used for packages, Layer 3's
+> milou patch, Layer 4's SDDM theming, and Layer 5's installs. **Log out / back
+> in** afterward to activate `Meta+Space` and `Meta+Ctrl+T` (Wayland binds global
+> shortcuts at login).
 
 ---
 
@@ -71,6 +73,20 @@ as one environment, by giving them the same Big Sur wallpaper:
 Run as your normal user — the lock part applies immediately and `sudo` prompts
 once for the SDDM part. Revert: `4-login-lock/revert.sh`.
 
+### 5 · System QoL  — `5-system-qol/`
+General OS ergonomics — **not** desktop look. All opt-in, reversible, `sudo` for
+package installs:
+- **`paccache.timer`** — weekly prune of old cached packages (needs `pacman-contrib`).
+- **Flatpak + Flathub** — installs Flatpak and adds the Flathub remote for Discover.
+- **Shell tooling (fish)** — `zoxide` (`z` smart-cd), **starship** prompt, and `fzf`
+  keybindings (`Ctrl-R` history · `Ctrl-T` files w/ `bat` preview · `Alt-C` cd),
+  dropped in as a guarded `~/.config/fish/conf.d/qol.fish` (no-op until the tools
+  exist; doesn't duplicate the CachyOS fish defaults).
+- **Timeshift** — installed in rsync mode (ext4-friendly); you pick the target +
+  schedule once in `sudo timeshift-gtk`.
+
+Revert: `5-system-qol/revert.sh` (`--purge` also removes the packages).
+
 ---
 
 ## Requirements
@@ -90,7 +106,7 @@ once for the SDDM part. Revert: `4-login-lock/revert.sh`.
 
 ## Reverting everything
 ```bash
-bash revert.sh           # layers 2, 3 & 4 fully; layer 1 prints manual steps
+bash revert.sh           # layers 2–5 fully; layer 1 prints manual steps
 bash revert.sh --purge   # also deletes the installed overlay files
 ```
 
@@ -101,4 +117,5 @@ install.sh  revert.sh  README.md
 2-settings-refine/ install.sh revert.sh icons/ kvantum/ systemd/ bin/
 3-krunner-finder/  install.sh revert.sh row-tweak/ claude-runner/
 4-login-lock/      install.sh revert.sh
+5-system-qol/      install.sh revert.sh fish/
 ```

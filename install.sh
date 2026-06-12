@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  WhiteSur CachyOS Pack — master installer
-#  Four independent layers, each opt-in:
+#  Five independent layers, each opt-in:
 #    1) Base mac desktop   — WhiteSur theme, dock, fonts, blur, animations,
 #                            Spotlight, light/dark toggle, Firefox-follows-system
 #    2) Settings refine    — theme-aware monochrome System Settings section icons
 #    3) KRunner finder     — bold two-line result rows + animations, and an
 #                            "Ask Claude"/web-search runner
 #    4) Login + lock       — Big Sur continuity on the SDDM login + lock screens
+#    5) System QoL         — paccache, Flatpak+Flathub, fish tooling, Timeshift
 #
 #  Run as your normal user (NOT root). Uses sudo only where noted (packages,
 #  and Layer 3's milou QML patch). Pass -y to accept all layers non-interactively.
@@ -17,7 +18,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 [ "$(id -u)" -eq 0 ] && { echo "Run as your normal user, not root."; exit 1; }
 
 ALL=0; case "${1:-}" in -y|--yes) ALL=1 ;; -h|--help)
-  echo "Usage: bash install.sh [-y]   (-y installs all three layers without asking)"; exit 0 ;;
+  echo "Usage: bash install.sh [-y]   (-y installs all layers without asking)"; exit 0 ;;
 esac
 
 cat <<'NOTICE'
@@ -26,7 +27,7 @@ cat <<'NOTICE'
   │   WhiteSur macOS-style desktop pack — CachyOS / KDE Plasma 6 (Wayland) │
   └──────────────────────────────────────────────────────────────────────┘
 
-  FOUR LAYERS (pick any):
+  FIVE LAYERS (pick any):
     1) Base mac desktop  — the full WhiteSur transformation. REPLACES your
        panel/dock, restarts plasmashell, sets Firefox to follow system theme.
     2) Settings refine   — uniform monochrome icons for System Settings
@@ -36,6 +37,9 @@ cat <<'NOTICE'
        web-search / Ask-Claude runner (Claude part needs the `claude` CLI).
     4) Login + lock      — Big Sur wallpaper on the lock screen (user-level)
        and the SDDM login screen (needs sudo), for login→lock→desktop unity.
+    5) System QoL        — general OS ergonomics (NOT desktop look): weekly
+       pacman-cache prune, Flatpak+Flathub, fish shell tooling (zoxide/starship/
+       fzf), and Timeshift restore points. Uses sudo for package installs.
 
   REQUIREMENTS:  Arch/CachyOS · KDE Plasma 6 · Wayland · run as normal user.
   REVERSIBLE:    ./revert.sh  (undoes every layer; --purge also deletes files).
@@ -58,6 +62,9 @@ if ask "LAYER 3 — KRunner finder (sudo for the row patch)"; then
 fi
 if ask "LAYER 4 — login + lock screen (sudo for SDDM)"; then
   bash "$HERE/4-login-lock/install.sh" || echo "  (layer 4 reported issues — see above)"
+fi
+if ask "LAYER 5 — system QoL (sudo for package installs)"; then
+  bash "$HERE/5-system-qol/install.sh" || echo "  (layer 5 reported issues — see above)"
 fi
 
 echo; echo ":: Settling Plasma…"
