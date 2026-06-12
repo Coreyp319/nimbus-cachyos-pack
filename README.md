@@ -22,9 +22,10 @@ WhiteSur global theme (Plasma + Qt/Kvantum + GTK light & dark), icons, mac
 cursors, **Inter** font, Big Sur wallpaper · floating **auto-hide dock** with
 Launchpad + pinned apps · **Spotlight** (centered KRunner, `Meta+Space`) + file
 search · mac-style window animations (scale/squash/maximize), Mission-Control
-hot corner, edge tiling · heavy blur · frosted Konsole · **one-click light↔dark
-toggle** (dock icon / Spotlight / `Meta+Ctrl+T`) · Firefox set to **follow the
-system** light/dark theme.
+hot corner, edge tiling · heavy blur · frosted menus & Konsole · slight dock
+bottom-margin · **one-click light↔dark toggle** (dock icon / Spotlight /
+`Meta+Ctrl+T`) · Firefox set to **follow the system** light/dark theme · QoL:
+NumLock on at login, Night Color (warm evenings).
 
 ⚠ **Replaces your panel/dock** (any panel with a task manager is rebuilt as the
 mac dock) and restarts plasmashell. Reverting: System Settings → Global Theme →
