@@ -64,7 +64,7 @@ if ask "LAYER 4 — login + lock screen (sudo for SDDM)"; then
   bash "$HERE/4-login-lock/install.sh" || echo "  (layer 4 reported issues — see above)"
 fi
 if ask "LAYER 5 — system QoL (sudo for package installs)"; then
-  bash "$HERE/5-system-qol/install.sh" || echo "  (layer 5 reported issues — see above)"
+  bash "$HERE/5-system-qol/install.sh" $([ "$ALL" = 1 ] && echo -y) || echo "  (layer 5 reported issues — see above)"
 fi
 
 echo; echo ":: Settling Plasma…"

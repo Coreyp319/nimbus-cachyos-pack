@@ -74,8 +74,8 @@ Run as your normal user — the lock part applies immediately and `sudo` prompts
 once for the SDDM part. Revert: `4-login-lock/revert.sh`.
 
 ### 5 · System QoL  — `5-system-qol/`
-General OS ergonomics — **not** desktop look. All opt-in, reversible, `sudo` for
-package installs:
+General OS ergonomics — **not** desktop look. Each item is offered as its own
+prompt (Enter = yes; `-y` accepts all), reversible, `sudo` for package installs:
 - **`paccache.timer`** — weekly prune of old cached packages (needs `pacman-contrib`).
 - **Flatpak + Flathub** — installs Flatpak and adds the Flathub remote for Discover.
 - **Shell tooling (fish)** — `zoxide` (`z` smart-cd), **starship** prompt, and `fzf`
