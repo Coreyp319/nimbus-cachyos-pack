@@ -184,6 +184,12 @@ kwriteconfig6 --file kdeglobals --group General --key menuFont "$F11"
 kwriteconfig6 --file kdeglobals --group General --key toolBarFont "Inter,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
 kwriteconfig6 --file kdeglobals --group General --key smallestReadableFont "Inter,9,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
 kwriteconfig6 --file kdeglobals --group WM      --key activeFont "Inter Display,11,-1,5,500,0,0,0,0,0,0,0,0,0,0,1"
+# Mono/fixed font: Meslo is a derivative of Apple's Menlo (the macOS terminal
+# face), so it pairs with Inter the way SF Mono pairs with SF on macOS. Ships
+# with the CachyOS Nerd-Font set; falls back to the system mono if absent.
+if fc-list | grep -qi "MesloLGS Nerd Font"; then
+  kwriteconfig6 --file kdeglobals --group General --key fixed "MesloLGS Nerd Font Mono,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
+fi
 ok "fonts set"
 
 # ---------------------------------------------------------------------------
@@ -279,6 +285,7 @@ EOF
 cat > "$HOME/.local/share/konsole/Frosted.profile" <<'EOF'
 [Appearance]
 ColorScheme=Frosted
+Font=MesloLGS Nerd Font Mono,11,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
 [General]
 Name=Frosted
 Parent=FALLBACK/
@@ -397,7 +404,7 @@ PBG="$HOME/.local/share/plasma/desktoptheme/WhiteSur/widgets/panel-background.sv
 if [ -f "$PBG" ]; then
   cp "$PBG" "$PBG.bak"
   zcat "$PBG" > "$BUILD/pbg.svg"
-  perl -0777 -pi -e 's/(id="hint-bottom-inset"\s+width="4"\s+height=")8(")/${1}14${2}/' "$BUILD/pbg.svg"
+  perl -0777 -pi -e 's/(id="hint-bottom-inset"\s+width="4"\s+height=")8(")/${1}10${2}/' "$BUILD/pbg.svg"
   perl -0777 -pi -e 's/(height=")11\.999977("\s+width="3\.9999998"\s+id="shadow-hint-bottom-inset")/${1}18${2}/' "$BUILD/pbg.svg"
   gzip -c "$BUILD/pbg.svg" > "$PBG"
   rm -f "$HOME/.cache/plasma-svgelements-"* "$HOME/.cache/plasma_theme_"*.kcache 2>/dev/null

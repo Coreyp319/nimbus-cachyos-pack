@@ -105,10 +105,14 @@ done
 printf '%s' "$HEX" > "$MARK"
 gtk-update-icon-cache -q -f "$DST" 2>/dev/null || true
 
-# Re-assert our icon theme only if a theme switch clobbered it (conditional = no loop).
-if [ "$cur_theme" != "$THEME_NAME" ]; then
-  kwriteconfig6 --file kdeglobals --group Icons --key Theme "$THEME_NAME"
-fi
+# Re-assert + NOTIFY. The theme NAME never changes across light<->dark (it stays
+# WhiteSur-dark-refined), so KDE gets no IconChanged signal on its own and the
+# taskbar/dock keep stale cached pixmaps from the old inherited set. plasma-changeicons
+# both writes Icons/Theme and emits IconChanged, forcing running apps to re-resolve.
+# It rewrites kdeglobals (re-firing this path unit once) but the fast-path above then
+# no-ops, so this cannot loop.
+/usr/lib/plasma-changeicons "$THEME_NAME" >/dev/null 2>&1 \
+  || kwriteconfig6 --file kdeglobals --group Icons --key Theme "$THEME_NAME"
 # Select the matching refined Kvantum whitespace theme (kvantum.kvconfig is NOT watched,
 # so this never re-triggers the watcher). Only if it exists and differs.
 if [ "$cur_kv" != "$KV_TARGET" ] && [ -d "$HOME/.config/Kvantum/$KV_TARGET" ]; then
