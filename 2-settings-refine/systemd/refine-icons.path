@@ -1,0 +1,10 @@
+[Unit]
+Description=Watch KDE color-scheme changes to keep refined section icons theme-aware
+
+[Path]
+# kdeglobals is rewritten whenever the color scheme / look-and-feel changes.
+PathChanged=%h/.config/kdeglobals
+Unit=cocovox-refine-icons.service
+
+[Install]
+WantedBy=default.target

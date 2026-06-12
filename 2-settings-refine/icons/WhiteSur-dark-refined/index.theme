@@ -1,0 +1,12 @@
+[Icon Theme]
+Name=WhiteSur Dark Refined
+Comment=WhiteSur with uniform monochrome System Settings section icons (tone tracks active scheme)
+Inherits=WhiteSur-dark,WhiteSur-light,breeze-dark,hicolor
+Directories=apps/scalable
+
+[apps/scalable]
+Size=22
+MinSize=8
+MaxSize=512
+Type=Scalable
+Context=Applications

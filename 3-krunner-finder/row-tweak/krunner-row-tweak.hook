@@ -1,0 +1,12 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Path
+Target = usr/lib/qt6/qml/org/kde/milou/ResultDelegate.qml
+Target = usr/lib/qt6/qml/org/kde/milou/ResultsView.qml
+Target = usr/lib/qt6/qml/org/kde/milou/qmldir
+
+[Action]
+Description = Re-applying krunner-row-tweak (bold result rows) to milou...
+When = PostTransaction
+Exec = /usr/local/share/krunner-row-tweak/apply.sh

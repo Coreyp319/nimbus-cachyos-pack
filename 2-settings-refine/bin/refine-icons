@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# Theme-aware refined System Settings section icons.
+# Re-bakes the monochrome section-icon tone to match the ACTIVE color scheme's text
+# color, so the icons stay legible when you switch light<->dark. Idempotent: if the
+# tone and icon-theme are already correct it makes NO writes (so the systemd path
+# watcher that calls it cannot loop).
+set -eu
+BZ=/usr/share/icons/breeze-dark
+DST="$HOME/.local/share/icons/WhiteSur-dark-refined"
+THEME_NAME="WhiteSur-dark-refined"
+MARK="$DST/.baked-tone"
+
+# --- LIVE window text color -> hex tone ---
+# Read the ACTUALLY-APPLIED palette from kdeglobals [Colors:Window] (source of truth
+# for what's painted on screen), not the scheme file, so the icon tone always matches
+# the real background regardless of how the theme was switched.
+scheme=$(kreadconfig6 --file kdeglobals --group General --key ColorScheme 2>/dev/null || echo "?")
+rgb=$(kreadconfig6 --file kdeglobals --group "Colors:Window" --key ForegroundNormal 2>/dev/null)
+if [ -z "${rgb:-}" ]; then
+  cf=$(find "$HOME/.local/share/color-schemes" /usr/share/color-schemes -iname "$scheme.colors" 2>/dev/null | head -1)
+  rgb=$(awk '/^\[Colors:Window\]/{w=1} w&&/^ForegroundNormal=/{print $0; exit}' "$cf" 2>/dev/null | cut -d= -f2)
+fi
+[ -z "${rgb:-}" ] && rgb="36,36,36"
+HEX=$(printf '#%02x%02x%02x' "${rgb%%,*}" "$(echo "$rgb"|cut -d, -f2)" "${rgb##*,}")
+
+cur_theme=$(kreadconfig6 --file kdeglobals --group Icons --key Theme 2>/dev/null || echo "")
+last=$(cat "$MARK" 2>/dev/null || echo "")
+
+# Fast path: nothing to do -> exit without writing anything (prevents watcher loop).
+if [ "$last" = "$HEX" ] && [ -d "$DST/apps/scalable" ] && [ "$cur_theme" = "$THEME_NAME" ]; then
+  exit 0
+fi
+
+# --- (re)build the 26 section icons with the baked tone ---
+rm -rf "$DST"; mkdir -p "$DST/apps/scalable"
+cat > "$DST/index.theme" <<EOF
+[Icon Theme]
+Name=WhiteSur Dark Refined
+Comment=WhiteSur with uniform monochrome System Settings section icons (tone tracks active scheme)
+Inherits=WhiteSur-dark,WhiteSur-light,breeze-dark,hicolor
+Directories=apps/scalable
+
+[apps/scalable]
+Size=22
+MinSize=8
+MaxSize=512
+Type=Scalable
+Context=Applications
+EOF
+
+map="
+preferences-desktop-mouse=input-mouse-symbolic
+preferences-desktop-keyboard=input-keyboard-symbolic
+preferences-desktop-gaming=applications-games-symbolic
+preferences-desktop-sound=audio-volume-high-symbolic
+preferences-desktop-display=monitor-symbolic
+preferences-desktop-accessibility=preferences-desktop-accessibility-symbolic
+preferences-desktop-peripherals=computer-symbolic
+preferences-system-bluetooth=preferences-system-bluetooth-symbolic
+preferences-system-disks=drive-harddisk-symbolic
+preferences-system-network=network-wireless-symbolic
+preferences-system-network-connection=network-wired-symbolic
+preferences-online-accounts=applications-internet-symbolic
+preferences-desktop-theme-global=preferences-desktop-theme-global-symbolic
+preferences-desktop-wallpaper=viewimage-symbolic
+preferences-desktop-font=font-symbolic
+preferences-desktop-animations=special-effects-symbolic
+applications-all=applications-all-symbolic
+preferences-desktop=preferences-system-symbolic
+preferences-system-windows=window-symbolic
+preferences-desktop-locale=preferences-desktop-locale-symbolic
+preferences-security=preferences-security-symbolic
+preferences-system-login=system-lock-screen-symbolic
+preferences-desktop-default-applications=applications-other-symbolic
+preferences-desktop-multimedia=applications-multimedia-symbolic
+preferences-desktop-search=preferences-system-search-symbolic
+preferences-system=preferences-system-symbolic
+"
+for pair in $map; do
+  name="${pair%%=*}"; src="${pair#*=}"
+  f=$(find "$BZ" -name "$src.svg" -path '*symbolic*' 2>/dev/null | head -1)
+  [ -z "$f" ] && continue
+  sed -e "s/currentColor/$HEX/g" -e "s/#fcfcfc/$HEX/gI" \
+      -e "s/\(\.ColorScheme-Text *{[^}]*color:\)#[0-9a-fA-F]\{6\}/\1$HEX/g" \
+      "$f" > "$DST/apps/scalable/$name.svg"
+done
+printf '%s' "$HEX" > "$MARK"
+gtk-update-icon-cache -q -f "$DST" 2>/dev/null || true
+
+# Re-assert our icon theme only if a theme switch clobbered it (conditional = no loop).
+if [ "$cur_theme" != "$THEME_NAME" ]; then
+  kwriteconfig6 --file kdeglobals --group Icons --key Theme "$THEME_NAME"
+fi
+kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
+echo "cocovox-refine-icons: tone $HEX (scheme $scheme)"
