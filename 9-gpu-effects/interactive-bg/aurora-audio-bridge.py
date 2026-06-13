@@ -1,31 +1,34 @@
 #!/usr/bin/env python3
 """Nimbus Aurora — music-reactivity bridge.
 
-Taps the default sink's *monitor* with `pw-cat`, runs an FFT, and writes
+Captures the default sink's *monitor*, runs an FFT, and writes
 bass/mid/treble/level/beat (each 0..1, AGC-normalised) to
-$XDG_RUNTIME_DIR/nimbus-aurora/audio.json at ~60 Hz. The wallpaper polls that
+$XDG_RUNTIME_DIR/nimbus-aurora/audio.json at ~30 Hz. The wallpaper polls that
 file (same pattern as the window bridge) and feeds the shader.
 
 It listens to the user's OWN audio output monitor — no microphone, no window
-content, no D-Bus. Follows the default sink if it changes; emits zeros when idle.
+content, no D-Bus. Follows the default sink if it changes; emits ~0 when idle.
 
-Deps: pw-cat (pipewire) + numpy. Run as a systemd --user service.
+Capture is via **ffmpeg** (`-f pulse`), NOT pw-cat: pw-cat's real-time capture
+desyncs to permanent silence the instant the Python reader is briefly delayed by
+the FFT/JSON work (a PipeWire xrun it never recovers from). ffmpeg buffers
+internally and tolerates that, so the values keep flowing. (pw-cat works only for
+a pure read loop with no processing — useless here.)
+
+Deps: ffmpeg + numpy + PipeWire's PulseAudio compat. Run as a systemd --user service.
 """
 import os
 import sys
 import json
 import time
 import tempfile
-import threading
-import collections
 import subprocess
 
 import numpy as np
 
 RATE   = 48000
-CHUNK  = 1024                 # samples per read (~21 ms)
 WIN    = 2048                 # FFT window
-OUT_HZ = 60
+OUT_HZ = 30
 
 RUNTIME  = os.environ.get("XDG_RUNTIME_DIR") or "/run/user/%d" % os.getuid()
 OUT_DIR  = os.path.join(RUNTIME, "nimbus-aurora")
@@ -40,56 +43,18 @@ def default_monitor():
         return None
 
 
-class Capture(threading.Thread):
-    """Spawn pw-cat on the current default monitor into a ring buffer; restart it
-    if the default sink changes or the process dies. Runs off the main loop so a
-    blocked read (sink suspended) never stalls the writer."""
-    def __init__(self):
-        super().__init__(daemon=True)
-        self.buf = collections.deque(np.zeros(WIN, dtype=np.float32), maxlen=WIN)
-        self.lock = threading.Lock()
-        self.last_data = 0.0
-
-    def run(self):
-        cur, proc, pending = None, None, b""
-        while True:
-            mon = default_monitor()
-            if mon != cur or proc is None or proc.poll() is not None:
-                if proc:
-                    try: proc.kill()
-                    except Exception: pass
-                cur = mon
-                if not mon:
-                    time.sleep(0.5); continue
-                proc = subprocess.Popen(
-                    ["pw-cat", "--record", "--target", mon, "--format", "s16",
-                     "--rate", str(RATE), "--channels", "1", "-"],
-                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
-                pending = proc.stdout.read(4)          # peek: skip a WAV header if present
-                if pending == b"RIFF":
-                    proc.stdout.read(40); pending = b""
-            try:
-                raw = proc.stdout.read(CHUNK * 2)
-            except Exception:
-                raw = b""
-            if not raw:
-                time.sleep(0.05); continue
-            if pending:
-                raw, pending = pending + raw, b""
-            raw = raw[:len(raw) // 2 * 2]              # whole int16 frames only
-            s = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
-            with self.lock:
-                self.buf.extend(s)
-                self.last_data = time.monotonic()
-
-    def snapshot(self):
-        with self.lock:
-            return np.asarray(self.buf, dtype=np.float32), self.last_data
+def spawn(mon):
+    # ffmpeg reads the monitor via the PulseAudio compat layer and writes raw
+    # mono s16 to stdout. Its internal buffering is what makes this robust where
+    # pw-cat is not.
+    return subprocess.Popen(
+        ["ffmpeg", "-loglevel", "quiet", "-f", "pulse", "-i", mon,
+         "-ac", "1", "-ar", str(RATE), "-f", "s16le", "-"],
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
 
 
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
-    cap = Capture(); cap.start()
 
     freqs = np.fft.rfftfreq(WIN, 1.0 / RATE)
     window = np.hanning(WIN).astype(np.float32)
@@ -106,17 +71,58 @@ def main():
         peaks[name] = max(v, peaks[name] * 0.999)
         return float(np.clip(v / (peaks[name] + 1e-9), 0.0, 1.0))
 
+    ring = np.zeros(WIN, dtype=np.float32)
+    mon = default_monitor()
+    proc = spawn(mon) if mon else None
+    last_write = 0.0
+    last_check = time.monotonic()
+
     while True:
-        t0 = time.monotonic()
-        sig, last = cap.snapshot()
-        if (time.monotonic() - last) > 0.4 or sig.size < WIN:
-            bass = mid = treble = level = 0.0
+        if proc is None:                               # no sink yet / ffmpeg gone
+            time.sleep(0.5)
+            mon = default_monitor()
+            proc = spawn(mon) if mon else None
+            continue
+
+        # follow the default sink if it changes (cheap, throttled — ffmpeg buffers
+        # through the brief pactl call)
+        now = time.monotonic()
+        if now - last_check > 3.0:
+            last_check = now
+            m = default_monitor()
+            if m and m != mon:
+                try: proc.kill(); proc.wait(timeout=0.5)
+                except Exception: pass
+                mon = m
+                proc = spawn(mon)
+                ring = np.zeros(WIN, dtype=np.float32)
+                continue
+
+        raw = proc.stdout.read(WIN * 2)                # blocking; ffmpeg paces us
+        if not raw:                                    # ffmpeg died -> respawn
+            try: proc.kill()
+            except Exception: pass
+            proc = None
+            continue
+
+        s = np.frombuffer(raw[:len(raw) // 2 * 2], dtype=np.int16).astype(np.float32) / 32768.0
+        n = s.size
+        if n >= WIN:
+            ring = s[-WIN:].copy()
         else:
-            sp = np.abs(np.fft.rfft(sig * window))
-            bass   = float(sp[bmask].mean())
-            mid    = float(sp[mmask].mean())
-            treble = float(sp[tmask].mean())
-            level  = float(np.sqrt(np.mean(sig * sig)))
+            ring = np.roll(ring, -n)
+            ring[-n:] = s
+
+        now = time.monotonic()
+        if now - last_write < period:                  # keep reading; emit at OUT_HZ
+            continue
+        last_write = now
+
+        sp = np.abs(np.fft.rfft(ring * window))
+        bass   = float(sp[bmask].mean())
+        mid    = float(sp[mmask].mean())
+        treble = float(sp[tmask].mean())
+        level  = float(np.sqrt(np.mean(ring * ring)))
 
         nb, nm, nt, nl = norm("bass", bass), norm("mid", mid), norm("treble", treble), norm("level", level)
 
@@ -135,10 +141,6 @@ def main():
             os.replace(tmp, OUT_FILE)                   # atomic: no half-written reads
         except Exception as exc:
             sys.stderr.write("aurora-audio: write failed: %s\n" % exc)
-
-        dt = period - (time.monotonic() - t0)
-        if dt > 0:
-            time.sleep(dt)
 
 
 if __name__ == "__main__":

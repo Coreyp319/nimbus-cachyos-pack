@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install + start the Nimbus Aurora *music-reactivity* bridge: a systemd --user
-# service that taps the default sink's monitor (pw-cat), FFTs it (numpy), and
+# service that taps the default sink's monitor (ffmpeg), FFTs it (numpy), and
 # writes bass/mid/treble/level/beat to the runtime state file the wallpaper polls.
 # The wallpaper consumer + shader ship inside the plugin (apply.sh). Opt-in; only
 # useful once the aurora is the active wallpaper. Reversible: audio-restore.sh
@@ -13,7 +13,9 @@ UNIT_DEST="$HOME/.config/systemd/user/$UNIT"
 ok(){   printf '  \033[32m✓\033[0m %s\n' "$1"; }
 warn(){ printf '  \033[33m!\033[0m %s\n' "$1"; }
 
-command -v pw-cat >/dev/null 2>&1 || warn "pw-cat not found — install 'pipewire' (it ships pw-cat)."
+# ffmpeg (not pw-cat) does the capture — its buffering survives the FFT-induced read
+# stalls that make pw-cat's real-time capture desync to permanent silence.
+command -v ffmpeg >/dev/null 2>&1 || warn "ffmpeg not found — install 'ffmpeg' (the capture backend), then re-run."
 python3 -c "import numpy" 2>/dev/null || warn "python numpy missing — install 'python-numpy', then re-run."
 
 mkdir -p "$DAEMON_DIR"
