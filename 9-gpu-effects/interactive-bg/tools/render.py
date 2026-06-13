@@ -14,7 +14,7 @@ Setup (one-time):
 Use:
     # default: all 5 styles, Big Sur dark, t=12 -> /tmp/aurora_shots/*.png
     /tmp/aurora-render/bin/python render.py
-    # explicit combos "style,theme,dark,t" (theme 0..5, dark 1|0):
+    # explicit combos "style,theme,dark,t" (theme 0..9, dark 1|0):
     /tmp/aurora-render/bin/python render.py 1,0,1,8 2,3,0,14
 Then montage with ImageMagick and view the PNGs. Renders with music/cursor/
 window reactivity zeroed (the static base look only).
@@ -24,7 +24,7 @@ import numpy as np
 import moderngl
 from PIL import Image
 
-FRAG = "/home/corey/nimbus-cachyos-pack/9-gpu-effects/interactive-bg/contents/shaders/aurora.frag"
+FRAG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "contents", "shaders", "aurora.frag")
 OUT  = "/tmp/aurora_shots"
 os.makedirs(OUT, exist_ok=True)
 
@@ -54,7 +54,7 @@ void main(){
     gl_Position = vec4(in_pos, 0.0, 1.0);
 }"""
 
-# Big-Sur custom defaults (only used if theme==5)
+# Big-Sur custom defaults (only used if theme==9)
 CUSTOM = [(0.05,0.06,0.16,1),(0.11,0.18,0.45,1),(0.27,0.32,0.72,1),(0.56,0.36,0.72,1),(0.98,0.55,0.45,1)]
 
 def render(ctx, prog, vao, fbo, style, theme, dark, t, speed=1.0):
@@ -101,7 +101,7 @@ def main():
     if not jobs:
         # default: all 5 styles, Big Sur dark, t=12
         jobs = [(s,0,1.0,12.0) for s in range(5)]
-    names = ["flow","hills","silk","caustics","ink"]
+    names = ["flow","hills","silk","caustics","ink","laserwave","vaporwave","cyberpunk"]
     for s,th,d,t in jobs:
         img = render(ctx, prog, vao, fbo, s, th, d, t)
         fn = f"{OUT}/s{s}_{names[s]}_th{th}_{'dark' if d else 'light'}_t{int(t)}.png"
