@@ -6,6 +6,9 @@ SELF="$(cd "$(dirname "$0")" && pwd)"; . "$SELF/../lib/doctor-lib.sh"
 TOGGLE="$HOME/.local/bin/nimbus-theme-toggle.sh"
 gate "theme-toggle helper absent" test -e "$TOGGLE"
 
+BTN="$HOME/.local/bin/nimbus-theme-toggle-button.sh"
+btnwatch=$(systemctl --user is-enabled nimbus-theme-toggle-button.path 2>/dev/null || true)
+
 laf=$(kreadconfig6 --file kdeglobals --group KDE   --key LookAndFeelPackage 2>/dev/null || true)
 icon=$(kreadconfig6 --file kdeglobals --group Icons --key Theme 2>/dev/null || true)
 style=$(kreadconfig6 --file kdeglobals --group KDE  --key widgetStyle 2>/dev/null || true)
@@ -16,8 +19,10 @@ kbd=$(kreadconfig6 --file kglobalshortcutsrc --group 'nimbus-theme-toggle.deskto
 # CoreyLavender dark theme, so they're reported, not failed.
 check "widget style is kvantum (got: ${style:-unset})"  [ "$style" = kvantum ]
 check "theme-toggle helper executable"                  [ -x "$TOGGLE" ]
+check "dock-button helper executable"                   [ -x "$BTN" ]
 note  "Look-and-Feel:  ${laf:-unset}"
 note  "icon theme:     ${icon:-unset}"
 note  "Meta+Ctrl+T:    ${kbd:-unset (log out to activate, or re-run layer 1)}"
+note  "button watcher: ${btnwatch:-disabled (re-run layer 1 to enable)}"
 
 doctor_done

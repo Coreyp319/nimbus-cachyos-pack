@@ -40,7 +40,12 @@ echo "── Layer 1: base mac desktop ──"
 # float-gap SVG edit). The Global-Theme reset and panel removal stay MANUAL —
 # they depend on your chosen replacement and can't be scripted without guessing
 # your layout.
+systemctl --user disable --now nimbus-theme-toggle-button.path 2>/dev/null || true
+rm -f "$HOME/.config/systemd/user/nimbus-theme-toggle-button.path" \
+      "$HOME/.config/systemd/user/nimbus-theme-toggle-button.service"
+systemctl --user daemon-reload 2>/dev/null || true
 rm -f "$HOME/.local/bin/nimbus-theme-toggle.sh" \
+      "$HOME/.local/bin/nimbus-theme-toggle-button.sh" \
       "$HOME/.local/share/applications/nimbus-theme-toggle.desktop"
 kwriteconfig6 --file kglobalshortcutsrc --group "nimbus-theme-toggle.desktop" \
   --key "_launch" "none,none,Toggle Light / Dark Theme" 2>/dev/null || true

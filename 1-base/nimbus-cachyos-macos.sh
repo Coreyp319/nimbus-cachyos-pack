@@ -395,22 +395,50 @@ if [ "$ACTIVE_WP" != "com.nimbus.aurora" ]; then
   WALL=$(ls "$HOME/.local/share/wallpapers/$WALLDIR"/contents/images/*.jpg 2>/dev/null | head -1)
   [ -n "${WALL:-}" ] && plasma-apply-wallpaperimage "$WALL" >/dev/null 2>&1
 fi
+# Lock screen: if the aurora is the greeter wallpaper, re-sync its EXPLICIT
+# light/dark Appearance. The greeter is sandboxed and can't follow the scheme on
+# its own (see Layer 9 lockscreen-apply.sh writes an explicit value, not "follow"),
+# so without this nudge the lock screen keeps the PREVIOUS mode until that script
+# is re-run by hand. Only the one Appearance key changes — fully reversible.
+if [ "$(kreadconfig6 --file kscreenlockerrc --group Greeter --key WallpaperPlugin 2>/dev/null)" = "com.nimbus.aurora" ]; then
+  LAPP=1; [ "$MODE" = dark ] && LAPP=2
+  kwriteconfig6 --file kscreenlockerrc --group Greeter --group Wallpaper \
+    --group com.nimbus.aurora --group General --key Appearance "$LAPP"
+fi
 for v in gtk-3.0 gtk-4.0; do
   kwriteconfig6 --file "$v/settings.ini" --group Settings --key gtk-theme-name "$GTK"
   kwriteconfig6 --file "$v/settings.ini" --group Settings --key gtk-application-prefer-dark-theme "$PREFERDARK"
   kwriteconfig6 --file "$v/settings.ini" --group Settings --key gtk-icon-theme-name "$ICONS"
 done
 notify-send -a Theme "Switched to $MODE mode" "Firefox + Qt live; GTK on next launch." 2>/dev/null
-# Keep the dock button state-aware: relabel + re-icon it to the NEXT action, so
-# the pinned launcher always reflects the current mode (the installer writes the
-# initial light-mode state to match). icontasks reads name/icon from this file.
-DESK="$HOME/.local/share/applications/nimbus-theme-toggle.desktop"
-if [ "$MODE" = dark ]; then
+# Keep the dock button state-aware: relabel + re-icon it to the NEXT action so the
+# pinned launcher always reflects the current mode. Delegated to a shared helper
+# (the ONE home for the moon/sun mapping) that a kdeglobals path-watcher ALSO runs,
+# so the button stays correct even when the scheme is changed outside this toggle.
+"$HOME/.local/bin/nimbus-theme-toggle-button.sh" "$MODE"
+EOF
+chmod +x "$HOME/.local/bin/nimbus-theme-toggle.sh"
+
+# Shared button helper — the ONE home for the moon/sun mapping, used by the toggle
+# (called with the mode it just applied), the path-watcher below (no arg → reads
+# the live scheme), and the initial install state. It only ever writes the
+# .desktop + rebuilds ksycoca (never kdeglobals), so the watcher can't loop.
+cat > "$HOME/.local/bin/nimbus-theme-toggle-button.sh" <<'EOF'
+#!/bin/bash
+# Relabel/re-icon the dock toggle button to the NEXT action for the CURRENT mode
+# (light → moon "go dark"; dark → sun "go light"). Mode comes from $1, else the
+# live colour scheme. CoreyLavender is a dark scheme whose name lacks "Dark".
+mode="${1:-}"
+if [ -z "$mode" ]; then
+  cur=$(kreadconfig6 --file kdeglobals --group General --key ColorScheme)
+  if [[ "$cur" == *Dark* || "$cur" == CoreyLavender ]]; then mode=dark; else mode=light; fi
+fi
+if [ "$mode" = dark ]; then
   NEXTNAME="Switch to Light Mode"; NEXTICON=weather-clear        # sun → go light
 else
   NEXTNAME="Switch to Dark Mode";  NEXTICON=weather-clear-night  # moon → go dark
 fi
-cat > "$DESK" <<DESKTOP
+cat > "$HOME/.local/share/applications/nimbus-theme-toggle.desktop" <<DESKTOP
 [Desktop Entry]
 Type=Application
 Name=$NEXTNAME
@@ -422,20 +450,35 @@ Categories=Utility;Settings;
 DESKTOP
 kbuildsycoca6 >/dev/null 2>&1
 EOF
-chmod +x "$HOME/.local/bin/nimbus-theme-toggle.sh"
-# Initial state matches section 5 (applies LIGHT) → next action is "go dark", so
-# the dock button starts as a moon. The toggle script rewrites Name/Icon on every
-# run to stay in sync — keep this mapping identical to the one in that script.
-cat > "$HOME/.local/share/applications/nimbus-theme-toggle.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=Switch to Dark Mode
-Comment=Switch the whole desktop between WhiteSur light and dark
-Exec=$HOME/.local/bin/nimbus-theme-toggle.sh
-Icon=weather-clear-night
-Terminal=false
-Categories=Utility;Settings;
+chmod +x "$HOME/.local/bin/nimbus-theme-toggle-button.sh"
+
+# Watcher — keep the button correct when the scheme is changed OUTSIDE the toggle
+# (System Settings → Colors, etc.). Mirrors the Layer 2/7 kdeglobals path-watchers.
+mkdir -p "$HOME/.config/systemd/user"
+cat > "$HOME/.config/systemd/user/nimbus-theme-toggle-button.service" <<'EOF'
+[Unit]
+Description=Resync the dock light/dark toggle button to the active colour scheme
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/nimbus-theme-toggle-button.sh
 EOF
+cat > "$HOME/.config/systemd/user/nimbus-theme-toggle-button.path" <<'EOF'
+[Unit]
+Description=Watch KDE colour-scheme changes to relabel the dock toggle button
+
+[Path]
+PathChanged=%h/.config/kdeglobals
+Unit=nimbus-theme-toggle-button.service
+
+[Install]
+WantedBy=default.target
+EOF
+systemctl --user enable --now nimbus-theme-toggle-button.path 2>/dev/null || true
+
+# Initial button state — section 5 applied LIGHT, so this writes the moon ("go
+# dark"). Same helper the toggle + watcher use, so all three agree by construction.
+"$HOME/.local/bin/nimbus-theme-toggle-button.sh" light
 kwriteconfig6 --file kglobalshortcutsrc --group "nimbus-theme-toggle.desktop" --key "_launch" \
   "Meta+Ctrl+T,none,Toggle Light / Dark Theme"
 kbuildsycoca6 >/dev/null 2>&1
