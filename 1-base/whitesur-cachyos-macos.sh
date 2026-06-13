@@ -360,30 +360,67 @@ else
 fi
 kwriteconfig6 --file "$HOME/.config/Kvantum/kvantum.kvconfig" --group General --key theme "$KV"
 kwriteconfig6 --file kdeglobals --group KDE --key LookAndFeelPackage "$LNF"
-# Window decoration (WhiteSur Aurorae) + login splash follow the mode.
-kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key library "org.kde.kwin.aurorae"
-kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key theme "$DECO"
+# Window decoration (WhiteSur Aurorae) — only when the matching Aurorae theme is
+# present, mirroring the installer's section-5 guard so a toggle never points
+# kwin at a missing decoration. widgetStyle + splash Engine are re-asserted for
+# full parity with the install (mode-invariant, but kept here so the toggle
+# alone is enough to restore the look).
+ADECO=WhiteSur; [ "$MODE" = dark ] && ADECO=WhiteSur-dark
+if [ -d "$HOME/.local/share/aurorae/themes/$ADECO" ]; then
+  kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key library "org.kde.kwin.aurorae"
+  kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key theme "$DECO"
+fi
+kwriteconfig6 --file kdeglobals --group KDE --key widgetStyle kvantum
+kwriteconfig6 --file ksplashrc --group KSplash --key Engine KSplashQML
 kwriteconfig6 --file ksplashrc --group KSplash --key Theme "$SPLASH"
 qdbus6 org.kde.KWin /KWin reconfigure >/dev/null 2>&1
-# Wallpaper: light vs dark Big Sur (best-effort — only if the image exists).
-if [ "$MODE" = dark ]; then WALLDIR=WhiteSur-dark; else WALLDIR=WhiteSur-light; fi
-WALL=$(ls "$HOME/.local/share/wallpapers/$WALLDIR"/contents/images/*.jpg 2>/dev/null | head -1)
-[ -n "${WALL:-}" ] && plasma-apply-wallpaperimage "$WALL" >/dev/null 2>&1
+# Wallpaper: the interactive aurora (Layer 9) follows the colour scheme on its
+# own, so don't overwrite it — only swap the light/dark Big Sur still image when
+# some OTHER wallpaper plugin is active.
+ACTIVE_WP=$(qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript 'print(desktops()[0].wallpaperPlugin)' 2>/dev/null)
+if [ "$ACTIVE_WP" != "com.whitesur.aurora" ]; then
+  if [ "$MODE" = dark ]; then WALLDIR=WhiteSur-dark; else WALLDIR=WhiteSur-light; fi
+  WALL=$(ls "$HOME/.local/share/wallpapers/$WALLDIR"/contents/images/*.jpg 2>/dev/null | head -1)
+  [ -n "${WALL:-}" ] && plasma-apply-wallpaperimage "$WALL" >/dev/null 2>&1
+fi
 for v in gtk-3.0 gtk-4.0; do
   kwriteconfig6 --file "$v/settings.ini" --group Settings --key gtk-theme-name "$GTK"
   kwriteconfig6 --file "$v/settings.ini" --group Settings --key gtk-application-prefer-dark-theme "$PREFERDARK"
   kwriteconfig6 --file "$v/settings.ini" --group Settings --key gtk-icon-theme-name "$ICONS"
 done
 notify-send -a Theme "Switched to $MODE mode" "Firefox + Qt live; GTK on next launch." 2>/dev/null
+# Keep the dock button state-aware: relabel + re-icon it to the NEXT action, so
+# the pinned launcher always reflects the current mode (the installer writes the
+# initial light-mode state to match). icontasks reads name/icon from this file.
+DESK="$HOME/.local/share/applications/whitesur-theme-toggle.desktop"
+if [ "$MODE" = dark ]; then
+  NEXTNAME="Switch to Light Mode"; NEXTICON=weather-clear        # sun → go light
+else
+  NEXTNAME="Switch to Dark Mode";  NEXTICON=weather-clear-night  # moon → go dark
+fi
+cat > "$DESK" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=$NEXTNAME
+Comment=Switch the whole desktop between WhiteSur light and dark
+Exec=$HOME/.local/bin/whitesur-theme-toggle.sh
+Icon=$NEXTICON
+Terminal=false
+Categories=Utility;Settings;
+DESKTOP
+kbuildsycoca6 >/dev/null 2>&1
 EOF
 chmod +x "$HOME/.local/bin/whitesur-theme-toggle.sh"
+# Initial state matches section 5 (applies LIGHT) → next action is "go dark", so
+# the dock button starts as a moon. The toggle script rewrites Name/Icon on every
+# run to stay in sync — keep this mapping identical to the one in that script.
 cat > "$HOME/.local/share/applications/whitesur-theme-toggle.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Toggle Light / Dark Theme
+Name=Switch to Dark Mode
 Comment=Switch the whole desktop between WhiteSur light and dark
 Exec=$HOME/.local/bin/whitesur-theme-toggle.sh
-Icon=preferences-desktop-theme-global
+Icon=weather-clear-night
 Terminal=false
 Categories=Utility;Settings;
 EOF
@@ -406,6 +443,57 @@ done
 PINS+=("applications:whitesur-theme-toggle.desktop")
 LAUNCHERS=$(IFS=,; echo "${PINS[*]}")
 
+# Ship a tiny custom "Dock Separator" plasmoid — Plasma 6 has no visible
+# separator applet (marginsseparator only adds blank space). It draws a thin,
+# colour-scheme-aware line that fills the panel content height, so it inherits
+# the same top/bottom inset as the icons (from the panel-background margins).
+SEP="$HOME/.local/share/plasma/plasmoids/org.whitesur.dockseparator"
+mkdir -p "$SEP/contents/ui"
+cat > "$SEP/metadata.json" <<'EOF'
+{
+    "KPlugin": {
+        "Authors": [{ "Name": "WhiteSur CachyOS Pack" }],
+        "Category": "Windows and Tasks",
+        "Description": "Thin vertical divider line for the mac dock",
+        "Icon": "distribute-vertical-x",
+        "Id": "org.whitesur.dockseparator",
+        "Name": "Dock Separator",
+        "Version": "1.0"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}
+EOF
+cat > "$SEP/contents/ui/main.qml" <<'EOF'
+import QtQuick
+import QtQuick.Layouts
+import org.kde.plasma.plasmoid
+import org.kde.kirigami as Kirigami
+
+PlasmoidItem {
+    id: root
+    Layout.fillHeight: true
+    Layout.fillWidth: false
+    Layout.preferredWidth: Kirigami.Units.smallSpacing * 2 + 1
+    Layout.minimumWidth: Layout.preferredWidth
+    Layout.maximumWidth: Layout.preferredWidth
+    preferredRepresentation: fullRepresentation
+
+    fullRepresentation: Item {
+        Layout.fillHeight: true
+        implicitWidth: Kirigami.Units.smallSpacing * 2 + 1
+        Rectangle {
+            anchors.centerIn: parent
+            width: 1
+            height: Math.round(parent.height * 0.62)  // a touch shorter than the icons
+            radius: width / 2
+            color: Kirigami.Theme.textColor
+            opacity: 0.22
+        }
+    }
+}
+EOF
+
 DOCK_OUT=$(qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript '
 var ps = panels();
 for (var i=0;i<ps.length;i++){
@@ -424,11 +512,14 @@ launcher.writeConfig("appNameFormat",0);
 launcher.writeConfig("showRecentApps",false);
 launcher.writeConfig("showRecentDocs",false);
 launcher.writeConfig("alphaSort",true);
+dock.addWidget("org.whitesur.dockseparator");      // launchpad | apps
 var tasks = dock.addWidget("org.kde.plasma.icontasks");
 tasks.currentConfigGroup=["General"];
 tasks.writeConfig("launchers","'"$LAUNCHERS"'");
-dock.addWidget("org.kde.plasma.marginsseparator");
+tasks.writeConfig("iconSpacing",6);   // more breathing room between dock icons (default 1)
+dock.addWidget("org.whitesur.dockseparator");      // apps | tray
 var tray = dock.addWidget("org.kde.plasma.systemtray");
+dock.addWidget("org.whitesur.dockseparator");      // tray | clock
 var clock = dock.addWidget("org.kde.plasma.digitalclock");
 clock.currentConfigGroup=["Appearance"];
 clock.writeConfig("fontFamily","Inter");   // match the UI font (vs default mono)
@@ -454,19 +545,30 @@ if [ -n "$TRAY_ID" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 12. Dock bottom margin (raise the floating gap 8 -> 14 in the theme)
+# 12. Dock geometry tweak in the theme SVG: bottom inset 8 -> 10 (raises the
+#   floating gap below the dock). Applied to BOTH WhiteSur and WhiteSur-dark —
+#   the theme toggle swaps between them and each ships its own
+#   panel-background.svgz. The element geometry is memoised in
+#   ~/.cache/ksvg-elements (Plasma 6 / KSvg — NOT the old Plasma-5
+#   "plasma-svgelements"), so that cache MUST be cleared or the edit won't show.
+#   NB: there is no way to pad the icon BUTTONS off the dock outline from the
+#   theme — a stock Plasma floating panel sizes task icons to the full thickness
+#   and ignores panel-background margins/insets for icon layout (verified). That
+#   "icons floating inside a larger pill" look needs Latte/Plank, not a panel.
 # ---------------------------------------------------------------------------
-msg "Adding dock bottom margin…"
-PBG="$HOME/.local/share/plasma/desktoptheme/WhiteSur/widgets/panel-background.svgz"
-if [ -f "$PBG" ]; then
+msg "Tuning dock margins…"
+for THEME in WhiteSur WhiteSur-dark; do
+  PBG="$HOME/.local/share/plasma/desktoptheme/$THEME/widgets/panel-background.svgz"
+  [ -f "$PBG" ] || continue
   cp "$PBG" "$PBG.bak"
   zcat "$PBG" > "$BUILD/pbg.svg"
   perl -0777 -pi -e 's/(id="hint-bottom-inset"\s+width="4"\s+height=")8(")/${1}10${2}/' "$BUILD/pbg.svg"
   perl -0777 -pi -e 's/(height=")11\.999977("\s+width="3\.9999998"\s+id="shadow-hint-bottom-inset")/${1}18${2}/' "$BUILD/pbg.svg"
   gzip -c "$BUILD/pbg.svg" > "$PBG"
-  rm -f "$HOME/.cache/plasma-svgelements-"* "$HOME/.cache/plasma_theme_"*.kcache 2>/dev/null
-  ok "bottom margin added (backup at $PBG.bak)"
-fi
+  ok "$THEME dock float-gap tuned (backup at $PBG.bak)"
+done
+# bust the KSvg geometry + rendered-theme caches so the new inset takes effect
+rm -f "$HOME/.cache/ksvg-elements" "$HOME/.cache/plasma_theme_"*.kcache 2>/dev/null
 
 # ---------------------------------------------------------------------------
 # 13. Firefox: follow the system light/dark theme (no fragile userChrome)
