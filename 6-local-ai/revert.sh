@@ -3,9 +3,16 @@
 # removes the two Hermes models, the ollama-cuda package, and (optionally) the
 # downloaded model blobs under /var/lib/ollama.
 set -uo pipefail
+HERE="$(cd "$(dirname "$0")" && pwd)"
 PURGE="${1:-}"
 
 echo "── Layer 6: local AI (Ollama + Hermes) ──"
+
+# UI-audit component first (removes its cron job + deployed skill; --purge also
+# clears its runtime). Runs regardless so the agent is fully undone.
+if [ -f "$HERE/ui-audit/revert.sh" ]; then
+  bash "$HERE/ui-audit/revert.sh" "$PURGE" || true
+fi
 
 if systemctl list-unit-files ollama.service >/dev/null 2>&1; then
   sudo systemctl disable --now ollama.service 2>/dev/null && echo "  ✓ ollama.service stopped + disabled" || true

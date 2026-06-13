@@ -1,0 +1,8 @@
+Run the daily KDE Plasma UI audit, following the kde-plasma-customization skill's references/audit-protocol.md (v2) EXACTLY. Unattended cron run, no chat context.
+1. Run: python3 ~/.hermes/skills/devops/kde-plasma-customization/scripts/ui-audit-collect.py
+2. Read the printed state.json. Write ops.json: only allowlisted keys; each op MUST include current_asserted = the EXACT value from state.json for that key (or null only if present:false), plus class, rationale, and confidence (0..1). NEVER propose ColorScheme/LookAndFeelPackage/widgetStyle/theme. Cite exact values; say 'unset' for absent keys; never infer.
+3. Dry-run, then apply (--state is REQUIRED):
+   ST=~/.hermes/ui-audit/state/state.json
+   python3 ~/.hermes/skills/devops/kde-plasma-customization/scripts/ui-audit-apply.py --ops ops.json --state $ST
+   python3 ~/.hermes/skills/devops/kde-plasma-customization/scripts/ui-audit-apply.py --ops ops.json --state $ST --apply
+4. The applier prints a report (## Changed since last run / Applied / Awaiting approval / One thing). OUTPUT THAT REPORT VERBATIM as your entire response. Do NOT write your own findings or summary — your prose is not grounded, the report is. Nothing auto-applies until the user has approved a key once (expected: first runs mostly STAGE). If the report says nothing actionable, relay that in one line.

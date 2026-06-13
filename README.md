@@ -107,6 +107,14 @@ package install:
 - **Hermes 4.3 36B** (`hermes4.3-36b`) — Q4_K_M, ~22 GB; smarter but borderline on
   24 GB, so a few layers offload to CPU and the KV cache is kept at 8k.
 - **Smoke test** — pings `/v1/chat/completions` and shows `ollama ps` (GPU split).
+- **UI-audit agent** (`6-local-ai/ui-audit/`) — a grounded daily KDE-theming
+  auditor for Hermes. Deploys the `kde-plasma-customization` skill (a
+  deterministic state collector + a guardrail applier) and an opt-in daily cron
+  job. The local LLM only *proposes* changes; the applier disposes — state-bound
+  assertions, an allowlist that denies load-bearing keys, **earned** auto-apply
+  (nothing applies until you approve a key once), backup+verify, `--revert`, and a
+  deterministic report. Reversible via `ui-audit/revert.sh` (`--purge` also clears
+  the audit runtime/ledger).
 
 Models are defined by the two `Modelfile.*` (quant + context); edit and re-run
 `ollama create` to retune. No sandbox yet — this just serves the models.

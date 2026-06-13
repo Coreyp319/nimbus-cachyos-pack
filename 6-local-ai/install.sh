@@ -99,6 +99,11 @@ if ask "run a quick smoke test against the OpenAI-compatible endpoint"; then
   fi
 fi
 
+# --- UI-audit agent (grounded daily theming audit) -------------------------
+if [ -f "$HERE/ui-audit/install.sh" ] && ask "set up the grounded daily UI-audit agent"; then
+  bash "$HERE/ui-audit/install.sh" $([ "$ALL" = 1 ] && echo -y) || warn "ui-audit setup reported issues"
+fi
+
 cat <<EOF
 
 $(printf '\033[1m:: Layer 6 done.\033[0m')
