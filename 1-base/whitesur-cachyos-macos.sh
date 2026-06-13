@@ -347,6 +347,11 @@ else
   GTK=WhiteSur-Dark; PREFERDARK=true; LNF=com.github.vinceliuice.WhiteSur-dark; MODE=dark
   DECO=__aurorae__svg__WhiteSur-dark; SPLASH=com.github.vinceliuice.WhiteSur-dark
 fi
+# Prefer the Settings-refine Kvantum fork when installed, so the accent-refined
+# controls survive a light/dark toggle instead of reverting to plain WhiteSur.
+if [ -d "$HOME/.config/Kvantum/WhiteSurRefined" ]; then
+  [ "$MODE" = dark ] && KV=WhiteSurRefinedDark || KV=WhiteSurRefined
+fi
 plasma-apply-colorscheme  "$COLORS" >/dev/null 2>&1
 plasma-apply-desktoptheme "$PTHEME" >/dev/null 2>&1
 # If the Settings-refine layer is installed, it owns the icon theme (a systemd
