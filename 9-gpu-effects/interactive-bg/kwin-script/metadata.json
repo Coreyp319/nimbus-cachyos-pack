@@ -1,0 +1,16 @@
+{
+    "KPackageStructure": "KWin/Script",
+    "KPlugin": {
+        "Id": "whitesur-aurora-windows",
+        "Name": "WhiteSur Aurora — window reactivity",
+        "Description": "Pushes live window geometry + the moving window's velocity to the Aurora bridge daemon, so the aurora wallpaper can react to windows being dragged.",
+        "Version": "0.1",
+        "License": "GPL-3.0-or-later",
+        "Authors": [
+            { "Name": "Corey Preston", "Email": "coreypreston@gmail.com" }
+        ],
+        "EnabledByDefault": false
+    },
+    "X-Plasma-API": "javascript",
+    "X-Plasma-MainScript": "code/main.js"
+}

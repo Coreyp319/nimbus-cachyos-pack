@@ -1,0 +1,19 @@
+{
+    "KPackageStructure": "Plasma/Wallpaper",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "coreypreston@gmail.com",
+                "Name": "Corey Preston"
+            }
+        ],
+        "Category": "",
+        "Description": "Cursor-reactive animated aurora — a WhiteSur/Big Sur gradient that flows over time and blooms a warm light under the pointer. GPU GLSL via the QtQuick scene graph.",
+        "Icon": "preferences-desktop-wallpaper",
+        "Id": "com.whitesur.aurora",
+        "License": "GPL-3.0-or-later",
+        "Name": "WhiteSur Aurora",
+        "Version": "0.1"
+    },
+    "X-KDE-ParentApp": "org.kde.plasmashell"
+}
