@@ -1,0 +1,8 @@
+# Gemma 4 26B-a4b (Google, via Ollama registry) — the "smarter" gemma4 option.
+# Mixture-of-Experts: 25.2B total params but only ~4B active per token, so it
+# runs near-8B speed while reasoning like a much larger dense model. QAT 4-bit
+# (Q4_0) ≈ 15 GB weights → stays fully on the 24 GB GPU with the 64K KV cache
+# (no CPU spill, unlike the dense 31b/36b). Native context is 262144; we bake a
+# 64K window so the OpenAI-compatible /v1 endpoint serves it Agent-ready.
+FROM gemma4:26b-a4b-it-qat
+PARAMETER num_ctx 65536

@@ -1,0 +1,7 @@
+# Qwen 3.6 27B (Alibaba, via Ollama registry) — dense, vision + tools + thinking.
+# Q4_K_M ≈ 17 GB weights; native context 262144. We bake a 64K window so the
+# OpenAI-compatible /v1 endpoint serves it Agent-ready (≥64K req). At 17 GB + a
+# 64K KV cache it's tighter on the 24 GB GPU than the gemma4 MoE — lean on the
+# KV-cache drop-in (flash attn + q8_0) to keep CPU spill minimal; check `ollama ps`.
+FROM qwen3.6:27b
+PARAMETER num_ctx 65536

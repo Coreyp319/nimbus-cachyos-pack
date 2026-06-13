@@ -1,0 +1,9 @@
+# Gemma 4 8B (Google, via Ollama registry) — the fast, fully-GPU-resident option.
+# Q4_K_M ≈ 9.6 GB weights; multimodal (vision + audio) with tools + thinking.
+# Native context is 131072, so it clears the Hermes Agent's ≥64K requirement on
+# its own — but the OpenAI-compatible /v1 endpoint ignores runtime num_ctx, so we
+# bake a 64K window here to make it Agent-ready. At 8B + Q4 it stays fully on the
+# 24 GB GPU even with the larger KV cache (no CPU spill, unlike the 36B).
+# Sampling (temp 1 / top_k 64 / top_p 0.95) is inherited from the base model.
+FROM gemma4:latest
+PARAMETER num_ctx 65536
