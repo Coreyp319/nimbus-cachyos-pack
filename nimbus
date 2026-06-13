@@ -129,9 +129,9 @@ cmd_install(){
     [ -n "$i" ] || continue
     if [ "$interactive" = 1 ]; then
       local sflag=""; [ "${sudos[$i]}" = yes ] && sflag=" ${d}(sudo)${x}"
-      printf '%sLayer %s%s — %s? [y/N] ' "$b" "${ids[$i]}" "$x" "${titles[$i]}${sflag}"
-      local ans; read -r ans </dev/tty 2>/dev/null || ans=n
-      case "$ans" in [yY]*) : ;; *) continue ;; esac
+      printf '%sLayer %s%s — %s? [Y/n] ' "$b" "${ids[$i]}" "$x" "${titles[$i]}${sflag}"
+      local ans; read -r ans </dev/tty 2>/dev/null || ans=n   # no tty -> skip (safe)
+      case "$ans" in [nN]*) continue ;; *) : ;; esac          # default (Enter) = yes
     fi
     if run_layer install "$i" "$DRY"; then
       [ "$DRY" = 1 ] || state_record "${ids[$i]}"; ran=$((ran + 1))

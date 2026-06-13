@@ -1,19 +1,14 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  Nimbus CachyOS Pack — master installer
-#  Five independent layers, each opt-in:
-#    1) Base mac desktop   — WhiteSur theme, dock, fonts, blur, animations,
-#                            Spotlight, light/dark toggle, Firefox-follows-system
-#    2) Settings refine    — theme-aware monochrome System Settings section icons
-#    3) KRunner finder     — bold two-line result rows + animations, and an
-#                            "Ask Claude"/"Ask Hermes"/web-search runner
-#    4) Login + lock       — Big Sur continuity on the SDDM login + lock screens
-#    5) System QoL         — paccache, Flatpak+Flathub, fish tooling, Timeshift
-#    6) Local AI           — ollama-cuda + Hermes 4 14B / 4.3 36B on the GPU
-#    7) Notifications      — Apple-style swaync toasts + notification center
-#    8) Dolphin Quick Look — Space previews the selected file in kiview
-#    9) GPU UI effects     — Glass blur (force-blur + rounded corners) and
-#                            ReShade-style desktop GLSL shaders (CAS sharpening)
+#
+#  A thin front-end over the `nimbus` CLI: it prints the overview below, then
+#  hands layer selection + install to `nimbus install`, so there is ONE source
+#  of truth (nimbus.layers) instead of a hardcoded ladder that drifts from it.
+#  Afterwards it settles Plasma. For status/repair use the CLI directly:
+#    ./nimbus status        health per layer
+#    ./nimbus doctor [id]   detailed drift checks
+#    ./nimbus update        re-assert installed layers after a system update
 #
 #  Run as your normal user (NOT root). Uses sudo only where noted (packages,
 #  and Layer 3's milou QML patch). Pass -y to accept all layers non-interactively.
@@ -22,8 +17,11 @@ set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 [ "$(id -u)" -eq 0 ] && { echo "Run as your normal user, not root."; exit 1; }
 
-ALL=0; case "${1:-}" in -y|--yes) ALL=1 ;; -h|--help)
-  echo "Usage: bash install.sh [-y]   (-y installs all layers without asking)"; exit 0 ;;
+case "${1:-}" in -h|--help)
+  echo "Usage: bash install.sh [-y] [id…]   (front-end for ./nimbus install)"
+  echo "  -y  install all layers non-interactively   ·   id…  install specific layers"
+  echo "  -n/--dry-run  show what would run, change nothing   ·   see also: ./nimbus help"
+  exit 0 ;;
 esac
 
 cat <<'NOTICE'
@@ -76,46 +74,19 @@ cat <<'NOTICE'
 
 NOTICE
 
-ask(){ [ "$ALL" = 1 ] && return 0; printf '  Install %s? [Y/n] ' "$1"
-       read -r r </dev/tty 2>/dev/null || r=n; case "$r" in [nN]*) return 1 ;; *) return 0 ;; esac; }
+# Layer selection + install is driven by nimbus.layers (no duplicate ladder).
+# Bare `install.sh` -> per-layer [Y/n] prompts; `-y` -> all; `id…` -> those.
+"$HERE/nimbus" install "$@"
 
-if ask "LAYER 1 — base mac desktop"; then
-  bash "$HERE/1-base/nimbus-cachyos-macos.sh" -y || echo "  (layer 1 reported issues — see above)"
-fi
-if ask "LAYER 2 — System Settings refined icons"; then
-  bash "$HERE/2-settings-refine/install.sh" || echo "  (layer 2 reported issues — see above)"
-fi
-if ask "LAYER 3 — KRunner finder (sudo for the row patch)"; then
-  bash "$HERE/3-krunner-finder/install.sh" || echo "  (layer 3 reported issues — see above)"
-fi
-if ask "LAYER 4 — login + lock screen (sudo for SDDM)"; then
-  bash "$HERE/4-login-lock/install.sh" || echo "  (layer 4 reported issues — see above)"
-fi
-if ask "LAYER 5 — system QoL (sudo for package installs)"; then
-  bash "$HERE/5-system-qol/install.sh" $([ "$ALL" = 1 ] && echo -y) || echo "  (layer 5 reported issues — see above)"
-fi
-if ask "LAYER 6 — local AI: Ollama + Hermes (sudo for the package)"; then
-  bash "$HERE/6-local-ai/install.sh" $([ "$ALL" = 1 ] && echo -y) || echo "  (layer 6 reported issues — see above)"
-fi
-if ask "LAYER 7 — Apple-style notifications (swaync)"; then
-  bash "$HERE/7-notifications/install.sh" $([ "$ALL" = 1 ] && echo -y) || echo "  (layer 7 reported issues — see above)"
-fi
-if ask "LAYER 8 — Dolphin Quick Look (Space → preview)"; then
-  bash "$HERE/8-dolphin-quicklook/install.sh" $([ "$ALL" = 1 ] && echo -y) || echo "  (layer 8 reported issues — see above)"
-fi
-if ask "LAYER 9 — GPU UI effects (Glass blur + desktop shaders)"; then
-  bash "$HERE/9-gpu-effects/install.sh" $([ "$ALL" = 1 ] && echo -y) || echo "  (layer 9 reported issues — see above)"
-fi
-if ask "LAYER 10 — Nimbus Flux GPU fluid engine (standalone bevy showpiece; needs Rust)"; then
-  bash "$HERE/10-shader-engine/install.sh" $([ "$ALL" = 1 ] && echo -y) || echo "  (layer 10 reported issues — see above)"
-fi
-
-echo; echo ":: Settling Plasma…"
-qdbus6 org.kde.KWin /KWin reconfigure >/dev/null 2>&1 || true
-kquitapp6 plasmashell >/dev/null 2>&1 || true
-(kstart plasmashell >/dev/null 2>&1 &) 2>/dev/null || (setsid plasmashell >/dev/null 2>&1 &)
-
-cat <<'DONE'
+# Settle Plasma so the new look lands now — but not on a dry run.
+case " $* " in
+  *" -n "*|*" --dry-run "*) ;;
+  *)
+    echo; echo ":: Settling Plasma…"
+    qdbus6 org.kde.KWin /KWin reconfigure >/dev/null 2>&1 || true
+    kquitapp6 plasmashell >/dev/null 2>&1 || true
+    (kstart plasmashell >/dev/null 2>&1 &) 2>/dev/null || (setsid plasmashell >/dev/null 2>&1 &)
+    cat <<'DONE'
 
    ────────────────────────────────────────────────────────────
    ✅  Done. LOG OUT and back in to finish (Meta+Space, Meta+Ctrl+T).
@@ -123,5 +94,8 @@ cat <<'DONE'
        Toggle light/dark: dock icon (☼/☾, relabels itself) · search "Switch"
        in Spotlight · Meta+Ctrl+T.
        Revert anytime:  ./revert.sh   (add --purge to delete installed files)
+       Check health:    ./nimbus status   ·   repair:  ./nimbus update
    ────────────────────────────────────────────────────────────
 DONE
+    ;;
+esac
