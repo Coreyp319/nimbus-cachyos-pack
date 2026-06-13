@@ -1,5 +1,6 @@
 Run the daily KDE Plasma UI audit, following the kde-plasma-customization skill's references/audit-protocol.md (v2) EXACTLY. Unattended cron run, no chat context.
 1. Run: python3 ~/.hermes/skills/devops/kde-plasma-customization/scripts/ui-audit-collect.py
+1b. Refresh the usage focus signal (best-effort, opt-in): bash ~/.hermes/skills/devops/kde-plasma-customization/scripts/run-sandboxed.sh ui-audit-usage.py . If it reports no consent (exit 2) or any error, CONTINUE WITHOUT usage focus — it is optional and the apply step works fine without it.
 2. Read the printed state.json. Write ops.json: only allowlisted keys; each op MUST include current_asserted = the EXACT value from state.json for that key (or null only if present:false), plus class, rationale, and confidence (0..1). NEVER propose ColorScheme/LookAndFeelPackage/widgetStyle/theme. Cite exact values; say 'unset' for absent keys; never infer.
 3. Dry-run, then apply (--state is REQUIRED):
    ST=~/.hermes/ui-audit/state/state.json
