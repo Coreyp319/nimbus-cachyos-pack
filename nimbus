@@ -77,37 +77,50 @@ cmd_list(){
 
 cmd_status(){
   printf '%sNimbus layers%s  %s(%s)%s\n' "$b" "$x" "$d" "${STATE/#$HOME/\~}" "$x"
-  local i st label
+  local i st label nok=0 ndrift=0 nni=0 nq=0 drifted=()
   for i in "${!ids[@]}"; do
     if [ -f "$NIMBUS_ROOT/${dirs[$i]}/doctor.sh" ]; then
       NIMBUS_QUIET=1 bash "$NIMBUS_ROOT/${dirs[$i]}/doctor.sh" >/dev/null 2>&1; st=$?
     else st=100; fi
     case $st in
-      0)   label="${g}[  ok  ]${x}" ;;
-      1)   label="${y}[ drift]${x}" ;;
-      10)  label="${d}[  --  ]${x}" ;;
-      100) label="${d}[  ?   ]${x}" ;;
+      0)   label="${g}[  ok  ]${x}"; nok=$((nok+1)) ;;
+      1)   label="${y}[ drift]${x}"; ndrift=$((ndrift+1)); drifted+=("${ids[$i]}") ;;
+      10)  label="${d}[  --  ]${x}"; nni=$((nni+1)) ;;
+      100) label="${d}[  ?   ]${x}"; nq=$((nq+1)) ;;
       *)   label="${r}[ err  ]${x}" ;;
     esac
     local tracked note=""; tracked="$(state_get "${ids[$i]}" 2>/dev/null || true)"
     [ -n "$tracked" ] && note=" ${d}· tracked @${tracked}${x}"
     printf '  %s  %-2s %-20s %s%s%s%s\n' "$label" "${ids[$i]}" "${dirs[$i]}" "$d" "${titles[$i]}" "$x" "$note"
   done
-  printf '\n  %sok%s healthy   %sdrift%s needs attention   %s--%s not installed   %s?%s no check yet\n' \
-    "$g" "$x" "$y" "$x" "$d" "$x" "$d" "$x"
-  printf '  %snimbus doctor [id…]%s for detail   %snimbus update%s to re-assert installed layers\n' "$b" "$x" "$b" "$x"
+  printf '\n  %s%d ok%s · %s%d drift%s · %s%d not-installed%s · %s%d no-check%s\n' \
+    "$g" "$nok" "$x" "$y" "$ndrift" "$x" "$d" "$nni" "$x" "$d" "$nq" "$x"
+  if [ ${#drifted[@]} -gt 0 ]; then
+    printf '  fix drift → %snimbus update %s%s   (%snimbus doctor %s%s for why)\n' \
+      "$b" "${drifted[*]}" "$x" "$b" "${drifted[*]}" "$x"
+  else
+    printf '  %snimbus doctor [id…]%s for detail\n' "$b" "$x"
+  fi
 }
 
 cmd_doctor(){
-  local targets=("$@") want i d_path
+  local targets=("$@") want i d_path rc nok=0 ndrift=0 nni=0 drifted=()
   [ ${#targets[@]} -eq 0 ] && targets=("${ids[@]}")
   for want in "${targets[@]}"; do
     if ! i=$(layer_index "$want"); then echo "nimbus: unknown layer '$want'" >&2; continue; fi
     printf '\n%s== %-2s %s ==%s\n' "$b" "${ids[$i]}" "${dirs[$i]}" "$x"
     d_path="$NIMBUS_ROOT/${dirs[$i]}/doctor.sh"
-    if [ -f "$d_path" ]; then bash "$d_path" || true
+    if [ -f "$d_path" ]; then
+      bash "$d_path"; rc=$?
+      case $rc in
+        0)  nok=$((nok+1)) ;;
+        1)  ndrift=$((ndrift+1)); drifted+=("${ids[$i]}") ;;
+        10) nni=$((nni+1)) ;;
+      esac
     else printf '  %sno doctor check for this layer yet%s\n' "$d" "$x"; fi
   done
+  printf '\n%s── %d ok · %d drift · %d not-installed ──%s\n' "$b" "$nok" "$ndrift" "$nni" "$x"
+  [ ${#drifted[@]} -gt 0 ] && printf '  fix drift → %snimbus update %s%s\n' "$b" "${drifted[*]}" "$x"
 }
 
 # Flag parsing shared by install/revert/update. Sets DRY/YES; non-flags -> REST.
@@ -198,6 +211,8 @@ ${b}nimbus${x} — Nimbus CachyOS pack orchestrator
   ${b}nimbus revert${x}  <id…|all>    revert layers (add ${b}--purge${x} to also delete files/packages)
   ${b}nimbus update${x} [id…]         re-assert installed layers (idempotent) after a system update
 
+  ${b}nimbus version${x}              show the pack version (git describe)
+
   Flags: ${b}-n${x}/${b}--dry-run${x} (print actions, change nothing)   ${b}-y${x}/${b}--yes${x} (non-interactive)
 
 Layer ids: $(printf '%s ' "${ids[@]}")
@@ -211,6 +226,7 @@ case "${1:-help}" in
   install)            shift; cmd_install "$@" ;;
   revert)             shift; cmd_revert "$@" ;;
   update)             shift; cmd_update "$@" ;;
+  version|-v|--version) git -C "$NIMBUS_ROOT" describe --tags --always --dirty 2>/dev/null || echo "nimbus (version unknown)" ;;
   -h|--help|help)     cmd_help ;;
   *) echo "nimbus: unknown command '$1'" >&2; cmd_help; exit 1 ;;
 esac
