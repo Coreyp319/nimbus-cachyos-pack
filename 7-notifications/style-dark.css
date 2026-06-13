@@ -1,0 +1,162 @@
+/* =========================================================================
+   WhiteSur pack — Apple-style notifications (DARK)
+   SwayNotificationCenter / GTK4 CSS.  Frost = translucency (KWin does not
+   blur layer-shell surfaces); a soft rgba card over the wallpaper + shadow.
+   Keep to GTK4-supported props: background, border, border-radius,
+   box-shadow, color, padding, margin, transition.  No backdrop-filter.
+   ========================================================================= */
+
+* {
+  all: unset;
+  font-family: "SF Pro Text", "Inter", "Noto Sans", sans-serif;
+}
+
+/* ---- toast frame: kill the default opaque window, keep our card only ---- */
+.notification-row { outline: none; }
+.notification-row:focus,
+.notification-row:hover { background: transparent; }
+
+.floating-notifications.background,
+.floating-notifications.background .notification-background {
+  background: transparent;
+}
+
+/* ---- the frosted card ---- */
+.notification-background .notification,
+.control-center .notification-background .notification {
+  border-radius: 16px;
+  margin: 8px 12px;
+  background: rgba(40, 40, 44, 0.90);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  padding: 4px;
+}
+
+.notification-background .notification.critical {
+  border: 1px solid rgba(255, 69, 58, 0.55);
+}
+
+.notification-content {
+  padding: 14px 16px;
+  margin: 0;
+}
+
+.summary {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.time {
+  font-size: 12px;
+  color: rgba(235, 235, 240, 0.55);
+}
+
+.body {
+  font-size: 13px;
+  color: rgba(235, 235, 240, 0.78);
+  margin-top: 4px;
+}
+
+.notification-default-action:hover,
+.notification-background .notification:hover {
+  background: rgba(52, 52, 56, 0.94);
+}
+
+/* app icon / image — rounded, with a clear gap before the text */
+.notification-content .image { border-radius: 12px; margin-right: 16px; }
+.notification-content .app-icon { border-radius: 8px; margin-right: 16px; }
+
+/* ---- action buttons: Apple pills with whitespace ---- */
+.notification-action {
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.10);
+  padding: 8px 16px;
+  margin: 10px 6px 4px 6px;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 500;
+}
+.notification-action:hover  { background: rgba(255, 255, 255, 0.18); }
+.notification-action:active { background: rgba(255, 255, 255, 0.24); }
+
+/* ---- inline reply (apps that advertise it) ---- */
+.inline-reply { margin-top: 10px; }
+.inline-reply-entry {
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+.inline-reply-button {
+  border-radius: 10px;
+  padding: 8px 14px;
+  margin-left: 8px;
+  background: rgba(10, 132, 255, 0.90);   /* Apple blue */
+  color: #ffffff;
+}
+.inline-reply-button:hover { background: rgba(10, 132, 255, 1.0); }
+
+/* ---- close button: circular ---- */
+.close-button {
+  border-radius: 999px;
+  min-width: 22px;
+  min-height: 22px;
+  margin: 8px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.85);
+}
+.close-button:hover { background: rgba(255, 69, 58, 0.85); color: #ffffff; }
+
+/* ---- control center / notification history panel ---- */
+.control-center {
+  border-radius: 18px;
+  background: rgba(30, 30, 34, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  padding: 12px;
+}
+.control-center-list { background: transparent; padding: 4px; }
+.control-center-list-placeholder { color: rgba(235, 235, 240, 0.35); }
+
+.widget-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 6px 8px 12px 8px;
+}
+.widget-title > button {
+  border-radius: 10px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 500;
+}
+.widget-title > button:hover { background: rgba(255, 255, 255, 0.18); }
+
+/* Do Not Disturb */
+.widget-dnd {
+  margin: 6px 8px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.92);
+}
+.widget-dnd > switch {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.widget-dnd > switch:checked { background: #34c759; }   /* Apple green */
+.widget-dnd > switch slider {
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+/* now-playing (mpris) widget */
+.widget-mpris {
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 8px;
+  margin: 6px 8px;
+}
+.widget-mpris-title  { font-weight: 600; color: #ffffff; }
+.widget-mpris-subtitle { color: rgba(235, 235, 240, 0.7); }

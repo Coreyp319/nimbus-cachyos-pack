@@ -1,0 +1,6 @@
+[Unit]
+Description=Swap swaync CSS to match the active KDE light/dark color scheme
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/swaync-apply-scheme.sh
