@@ -6,11 +6,17 @@ PURGE="${1:-}"
 
 CFG="$HOME/.config/swaync"
 DBUS_DIR="$HOME/.local/share/dbus-1/services"
+USERUNIT="$HOME/.config/systemd/user"
 TRAY="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"
 
 echo "1/6 Stopping swaync + the CSS watcher…"
 systemctl --user disable --now swaync.service swaync-apply-scheme.path 2>/dev/null || true
 systemctl --user stop swaync-apply-scheme.service 2>/dev/null || true
+# Remove our swaync.service override so the packaged unit takes over again, and
+# clean up the stale drop-in dir from earlier pack versions if present.
+rm -f "$USERUNIT/swaync.service"
+rm -rf "$USERUNIT/swaync.service.d"
+systemctl --user daemon-reload 2>/dev/null || true
 
 echo "2/6 Removing the D-Bus shadow (returns the name to Plasma)…"
 rm -f "$DBUS_DIR/org.freedesktop.Notifications.service"

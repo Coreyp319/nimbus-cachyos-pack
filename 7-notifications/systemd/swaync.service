@@ -1,0 +1,36 @@
+# Nimbus override of the stock swaync.service.
+# Installed as: ~/.config/systemd/user/swaync.service  (replaces /usr/lib/.../swaync.service)
+#
+# Identical to the packaged unit EXCEPT the start ordering. org.freedesktop.
+# Notifications has a single owner; plasmashell registers it eagerly at login but
+# YIELDS the name if it's already owned (verified). The stock unit orders
+# After=graphical-session.target — reached AFTER plasmashell — so plasmashell wins
+# the race, swaync's Type=dbus start can't acquire its BusName, and it dies into
+# start-limit-hit and never recovers.
+#
+# A drop-in can't fix this: the After=graphical-session.target edge is anchored as
+# `graphical-session.target Before=swaync.service` and survives an `After=` reset,
+# and adding Before=plasma-plasmashell.service then forms an ordering cycle
+# (plasmashell -> swaync -> graphical-session.target -> ... -> plasmashell), which
+# systemd breaks by DELETING plasmashell's start job — no desktop. So we replace
+# the unit outright: start once the compositor + session manager are up, but
+# before plasmashell, so swaync owns the name first and plasmashell yields.
+#
+# Tradeoff: if the swaync package changes its unit (ExecStart etc.), update this
+# copy. Keep [Service] in sync with /usr/lib/systemd/user/swaync.service.
+[Unit]
+Description=Swaync notification daemon (Nimbus: claims the bus before plasmashell)
+Documentation=https://github.com/ErikReider/SwayNotificationCenter
+ConditionEnvironment=WAYLAND_DISPLAY
+After=plasma-kwin_wayland.service plasma-ksmserver.service
+Before=plasma-plasmashell.service
+
+[Service]
+Type=dbus
+BusName=org.freedesktop.Notifications
+ExecStart=/usr/bin/swaync
+ExecReload=/usr/bin/swaync-client --reload-config ; /usr/bin/swaync-client --reload-css
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target
