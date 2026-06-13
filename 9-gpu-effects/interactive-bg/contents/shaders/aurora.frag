@@ -185,6 +185,59 @@ float flowField(vec2 base, float t, out float rx) {
     return fbm(base + 2.2 * r);
 }
 
+// Caustics' thin ridged web at an already-advected coordinate (advection removed
+// from the internals so the flow-map can drive it). beatThresh widens on a beat.
+float causticField(vec2 wp, float t, float beatThresh) {
+    vec2 warp = vec2(fbm(wp * 0.8 + vec2(0.0,  0.08 * t)),
+                     fbm(wp * 0.8 + vec2(4.0, -0.07 * t))) - 0.5;
+    vec2 sp   = wp * 1.7 + warp * 0.7;
+    float ridge = abs(fbm(sp) * 2.0 - 1.0);
+    return pow(1.0 - smoothstep(0.0, beatThresh, ridge), 1.4);
+}
+
+// Ink density (turbulent body + filaments) at an already-advected coordinate.
+float inkField(vec2 wp, float t, float mMid, float mBeat) {
+    vec2 warp = vec2(fbm(wp * 1.1 + vec2(0.0, 0.12 * t)),
+                     fbm(wp * 1.1 + vec2(3.7, 0.10 * t))) - 0.5;
+    vec2 ip   = wp * 1.15 + warp * 1.2;
+    float turb = pow(abs(fbm(ip * 1.7) * 2.0 - 1.0), 1.3);
+    float body = smoothstep(0.38, 0.66, fbm(ip));
+    return pow(clamp(body * (0.85 + 0.6 * turb + 0.25 * mMid)
+                     + 0.20 * mBeat * body, 0.0, 1.0), 0.72);
+}
+
+// Per-pixel current that routes around every window (stones in the stream): start
+// from baseV, and near each window remove the component heading INTO it so the flow
+// diverts around the box edges. Time-independent -> routes the flow even when idle.
+// Shared by every flow-mapped style; uses the static aspect-corrected point p for
+// the (fixed) window geometry.
+vec2 windowFlow(vec2 p, vec2 baseV, float t) {
+    vec2  V      = baseV;
+    float wreact = clamp(uWinReact, 0.0, 1.0);
+    if (wreact > 0.001) {
+        for (int i = 0; i < 6; i++) {
+            if (i >= uWinCount) break;
+            vec4 w = winAt(i);
+            if (w.z <= 0.0) continue;
+            vec2  wc  = toP(w.xy + 0.5 * w.zw);
+            vec2  wh  = 0.5 * w.zw * iResolution / iResolution.y;
+            float sd  = max(sdBox(p, wc, wh), 0.0);
+            float g   = exp(-sd * 3.5) * wreact;        // routing reach around the stone
+            // FEATHER: a clean exp() halo makes the deflection mirror corner-to-
+            // corner (too uniform to read as water). Modulate the routing strength
+            // with low-freq noise keyed to THIS window's centre and drifting slowly
+            // in t, so the diversion band ebbs and swells organically around the
+            // perimeter — no two corners match, and each window gets its own pattern.
+            // Stays > 0 so the current never leaks into the box.
+            g *= 0.45 + 0.85 * fbm(p * 2.2 + wc * 4.0 + vec2(0.0, 0.4 * t));
+            vec2  nrm = boxNormal(p, wc, wh);           // outward from the box EDGE
+            float vn  = dot(V, nrm);                    // <0 = flow heading into it
+            V = mix(V, V - min(vn, 0.0) * nrm * 1.2, clamp(g, 0.0, 1.0));  // cancel inward + bow
+        }
+    }
+    return V;
+}
+
 vec3 baseLook(int style, vec2 warpP, vec2 p, float t,
               vec3 c0, vec3 c1, vec3 c2, vec3 c3, vec3 c4,
               vec4 mus, out float shade)
@@ -273,26 +326,20 @@ vec3 baseLook(int style, vec2 warpP, vec2 p, float t,
     }
 
     if (style == 3) {
-        // --- Caustics: slow water-light. A SINGLE ridged field advected along a
-        //     gently curling flow, so the bright veins GLIDE across the frame
-        //     rather than twinkle in place (two independently-animated fields
-        //     interfering was the old "jitter"). shade = caustic brightness.
-        // ride the shared current; a low-freq, low-amp meander curls the veins as
-        // they travel (not boil)
-        // the field rides the current while its meander-warp drifts SLOWER (and
-        // evolves a touch), so the veins writhe and reconnect as they travel
-        // instead of sliding rigidly past — water flowing, not a panned photo
-        vec2 cf = flow * 0.5;
-        // the meander-warp drifts on the current and evolves only GENTLY — the thin
-        // bright web shows fast evolution as flicker, so the veins reconnect slowly
-        vec2 warp = vec2(fbm(warpP * 0.8 - cf * 0.25 + vec2(0.0,  0.08 * t)),
-                         fbm(warpP * 0.8 - cf * 0.25 + vec2(4.0, -0.07 * t))) - 0.5;
-        vec2 sp = warpP * 1.7 + cf + warp * 0.7;
-        // THIN bright web: light only very near each ridge line (|fbm-0.5| small),
-        // so it reads as an interconnected caustic NETWORK, not soft cloud blobs —
-        // that line-language is what sets it apart from Flow/Ink in warm palettes.
-        float ridge = abs(fbm(sp) * 2.0 - 1.0);
-        float caustic = pow(1.0 - smoothstep(0.0, 0.16 + 0.10 * mBeat, ridge), 1.4);
+        // --- Caustics: slow water-light, a thin ridged web that now FLOWS AROUND
+        //     windows (stones in the stream) via the shared velocity field + a
+        //     two-phase flow-map, exactly like Flow. The veins glide and reconnect
+        //     as they travel; near a window the current diverts around the box edges
+        //     so the web bends past it. THIN web language preserved (causticField).
+        vec2  V  = windowFlow(p, vec2(0.92, 0.39), t);        // diagonal current, routed
+        float D  = 0.5 * (1.0 + 0.5 * mLevel + 0.4 * mBass);  // veins drift slowly
+        float ph = fract(t * 0.6);
+        float pA = ph, pB = fract(ph + 0.5);
+        float wA = 1.0 - abs(2.0 * pA - 1.0);
+        float wB = 1.0 - abs(2.0 * pB - 1.0);
+        float bt = 0.16 + 0.10 * mBeat;
+        float caustic = causticField(warpP - V * (pA * D), t, bt) * wA
+                      + causticField(warpP - V * (pB * D), t, bt) * wB;
         shade = clamp(caustic * (1.0 + 0.20 * mMid), 0.0, 1.0);
         vec3 deep  = mix(c1, c0, clamp(0.5 - p.y * 0.7, 0.0, 1.0));
         // luminous but COOL glint (mid stops only, no full-coral): water-light veins
@@ -301,31 +348,19 @@ vec3 baseLook(int style, vec2 warpP, vec2 p, float t,
     }
 
     if (style == 4) {
-        // --- Ink in water: drops of pigment bloom and feather into still water.
-        //     A couple of slow sources drift and breathe their reach; a turbulent
-        //     (absolute-fbm) domain warp curls the density into wispy tendrils at
-        //     each bloom's edge — the classic ink-diffusion look. Cool water from
-        //     c0..c1, pigment carried up through c2..c4. shade = ink density.
-        // pigment carried DOWNSTREAM: the whole turbulent density field is advected
-        // along the current, so plumes stream through the frame and renew, instead
-        // of sources pulsing in place. A tiny slow term keeps the tendrils curling.
-        // pigment RISES and DIFFUSES as it's carried: the body drifts upward while
-        // its curl-warp and turbulence advect at OTHER rates, so the plumes billow
-        // and feather as they travel (differential advection = flow, not a pan).
-        // Ink rises in water, so its current leans up regardless of the diagonal.
-        vec2 dr = vec2(0.25, -0.95) * flowAmt;                  // upward current
-        // the curl-warp drifts up on the current and evolves only gently — the
-        // plumes billow as they rise without the body flickering (fast = jitter)
-        vec2 warp = vec2(fbm(warpP * 1.1 - dr * 0.6 + vec2(0.0, 0.12 * t)),
-                         fbm(warpP * 1.1 - dr * 0.6 + vec2(3.7, 0.10 * t))) - 0.5;
-        vec2 ip   = warpP * 1.15 - dr * 0.85 + warp * 1.2;      // billowing tendrils
-        float turb = pow(abs(fbm(ip * 1.7 - dr * 0.3) * 2.0 - 1.0), 1.3);  // wispy filaments
-        // denser body (lower threshold) so ink reads clearly even in dark/warm palettes
-        float body = smoothstep(0.38, 0.66, fbm(ip));
-        // mid thickens the ink body; a beat injects a puff of pigment where ink
-        // already lives (gated by body so it never tints the empty water)
-        float ink = pow(clamp(body * (0.85 + 0.6 * turb + 0.25 * mMid)
-                              + 0.20 * mBeat * body, 0.0, 1.0), 0.72);
+        // --- Ink in water: turbulent pigment plumes that RISE and now also FLOW
+        //     AROUND windows. The base current leans upward (ink rises); the shared
+        //     velocity field routes it around the box edges, and the two-phase
+        //     flow-map advects the density so plumes billow as they travel and
+        //     divert past windows. Cool water c0..c1, pigment up through c2..c4.
+        vec2  V  = windowFlow(p, vec2(0.25, -0.95), t);       // upward current, routed
+        float D  = 0.8 * (1.0 + 0.5 * mLevel + 0.4 * mBass);
+        float ph = fract(t * 0.6);
+        float pA = ph, pB = fract(ph + 0.5);
+        float wA = 1.0 - abs(2.0 * pA - 1.0);
+        float wB = 1.0 - abs(2.0 * pB - 1.0);
+        float ink = inkField(warpP - V * (pA * D), t, mMid, mBeat) * wA
+                  + inkField(warpP - V * (pB * D), t, mMid, mBeat) * wB;
         shade = ink;
         vec3 water   = mix(c1, c0, clamp(0.5 - p.y * 0.7, 0.0, 1.0));
         vec3 pigment = ramp(0.34 + 0.55 * ink, c0, c1, c2, c3, c4);
@@ -339,26 +374,9 @@ vec3 baseLook(int style, vec2 warpP, vec2 p, float t,
     //     so it only ever reads as a lens on top of a straight current.
     const float SC = 0.85;
 
-    // 1) PER-PIXEL VELOCITY field: base diagonal current, with the component heading
-    //    INTO each window removed so the stream diverts around it and accelerates
-    //    past its flanks. Time-independent -> it routes the flow even when idle.
-    vec2  V      = vec2(0.92, 0.39);
-    float wreact = clamp(uWinReact, 0.0, 1.0);
-    if (wreact > 0.001) {
-        for (int i = 0; i < 6; i++) {
-            if (i >= uWinCount) break;
-            vec4 w = winAt(i);
-            if (w.z <= 0.0) continue;
-            vec2  wc  = toP(w.xy + 0.5 * w.zw);
-            vec2  wh  = 0.5 * w.zw * iResolution / iResolution.y;
-            float sd  = max(sdBox(p, wc, wh), 0.0);
-            float g   = exp(-sd * 3.5) * wreact;        // routing reach around the stone
-            vec2  nrm = boxNormal(p, wc, wh);           // outward from the box EDGE
-            float vn  = dot(V, nrm);                    // <0 = flow heading into it
-            vec2  vAround = V - min(vn, 0.0) * nrm * 1.2;  // cancel inward + slight bow
-            V = mix(V, vAround, g);
-        }
-    }
+    // 1) PER-PIXEL VELOCITY field: base diagonal current routed around every window
+    //    (see windowFlow). Time-independent -> it routes the flow even when idle.
+    vec2 V = windowFlow(p, vec2(0.92, 0.39), t);
 
     // 2) FLOW-MAP advection along V: each phase scrolls a BOUNDED distance D then
     //    resets; two phases offset by half a cycle, triangle-crossfaded, so the
@@ -448,9 +466,11 @@ void main() {
         }
         // strength of the routing — the main "how much do windows divert the stream"
         // dial. Up from 0.05: the user wants the stone-in-stream read to be clear.
-        // Skipped for style 0 (Flow), which routes the flow PROPERLY via a per-pixel
-        // velocity + flow-map advection (this static warp is only a lens on top).
-        warpP += winPush * react * 0.08 * (1.0 + 0.4 * energy) * float(uStyle != 0);
+        // Skipped for the flow-mapped styles (0 Flow, 3 Caustics, 4 Ink), which route
+        // the flow PROPERLY via a per-pixel velocity + flow-map advection — this
+        // static warp would only be a lens on top. Kept for Hills/Silk.
+        bool flowMapped = (uStyle == 0 || uStyle == 3 || uStyle == 4);
+        warpP += winPush * react * 0.08 * (1.0 + 0.4 * energy) * float(!flowMapped);
     }
 
     // ---- a MOVING window shoves the fluid, not just trails light: near the window

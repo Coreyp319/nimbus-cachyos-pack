@@ -8,7 +8,7 @@
   <group name="General">
     <entry name="Theme" type="Int">
       <label>Colour theme (0 Big Sur, 1 Monterey, 2 Graphite, 3 Sunset, 4 Nord, 5 Custom)</label>
-      <default>0</default>
+      <default>3</default>
     </entry>
     <entry name="Style" type="Int">
       <label>Base look (0 Flow, 1 Hills, 2 Silk curtains, 3 Caustics, 4 Ink in water)</label>
@@ -16,7 +16,7 @@
     </entry>
     <entry name="Intensity" type="Double">
       <label>Colour vividness (1 = as designed, lower = muted)</label>
-      <default>1.0</default>
+      <default>2.0</default>
     </entry>
     <entry name="Appearance" type="Int">
       <label>Light/dark: 0 follow colour scheme, 1 always light, 2 always dark</label>
@@ -32,21 +32,21 @@
     <entry name="Color4" type="Color"><default>#fa8c73</default></entry>
     <entry name="Speed" type="Double">
       <label>Motion speed multiplier</label>
-      <default>1.0</default>
+      <default>2.5</default>
     </entry>
     <entry name="Interactivity" type="Double">
       <label>Cursor influence (0 = still, 1 = full bloom)</label>
-      <default>0.0</default>
+      <default>0.2</default>
     </entry>
     <entry name="WindowReact" type="Double">
       <label>React to window movement (0 = off, 1 = full). Needs the aurora
              window bridge installed (Layer 9 / windows-apply.sh).</label>
-      <default>0.0</default>
+      <default>1.0</default>
     </entry>
     <entry name="MusicReact" type="Double">
       <label>React to music (0 = off, 1 = full). Needs the aurora audio
              bridge installed (Layer 9 / audio-apply.sh).</label>
-      <default>0.30</default>
+      <default>0.0</default>
     </entry>
   </group>
 </kcfg>
