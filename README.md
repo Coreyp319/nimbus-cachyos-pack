@@ -54,6 +54,15 @@ fork** (`NimbusRefined` + `NimbusRefinedDark`, not auto-selected) that adds
 breathing room in classic Qt dialogs; if enabled, the watcher rides it light↔dark
 too. Fully reversible: `2-settings-refine/revert.sh`.
 
+Optional accent: **CoreyLavender** (`2-settings-refine/coreylavender/`) — a true
+dark-lavender colour scheme rebuilt to pass WCAG AA/AAA (violet elevation ladder,
+accent-coherent selection/focus, lightened semantics). Run it explicitly (it is
+*not* part of the unconditional Layer 2 install, so it never hijacks your scheme):
+`bash 2-settings-refine/coreylavender/install.sh` makes it available and pins it
+as the WhiteSur-dark Look-and-Feel default so it survives login (Layer 1's toggle
+already prefers it for dark mode when present); `--apply` switches the live
+session now. Reversible via its `revert.sh` (restores `WhiteSurDark`).
+
 > Scope note: the Settings sidebar *spacing/layout* is compiled Kirigami QML and
 > is **not** reachable by any theming overlay — only the iconography and selection
 > colors are. This layer does the reachable part well.
