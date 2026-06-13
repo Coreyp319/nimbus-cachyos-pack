@@ -1,12 +1,15 @@
 ---
 name: kwin-gpu-effects
 description: >-
-  Work with KWin GPU shader effects on KDE Plasma 6 / Wayland (CachyOS / Arch):
-  enable, disable, and tune the blur forks (Better Blur/forceblur, Glass) and
-  kwin-effect-shaders; blur the dock/panels and menus; author and install custom
-  GLSL shaders; diagnose no-blur / changes-do-nothing / stutter / build issues. Use
-  whenever the user wants to change desktop blur, frosted glass, rounded corners,
-  sharpening (CAS), color grading, or any GPU UI effect.
+  Work with the pack's GPU shader effects on KDE Plasma 6 / Wayland (CachyOS / Arch):
+  the blur forks (Better Blur/forceblur, Glass) and kwin-effect-shaders (enable/disable/
+  tune, blur dock/panels/menus, author+install custom GLSL); the interactive
+  `com.nimbus.aurora` wallpaper and its styles (incl. the multi-pass "Liquid" GPU fluid
+  via RGBA16F ShaderEffectSource feedback) and cursor/music/window reactivity; and the
+  standalone Layer-10 bevy/wgpu fluid engine (nimbus-flux). Diagnose no-blur /
+  changes-do-nothing / stutter / build issues. Use whenever the user wants to change
+  desktop blur, frosted glass, rounded corners, sharpening (CAS), color grading, the
+  animated/reactive wallpaper, a GPU fluid sim, or any GPU UI/shader effect.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---
 
@@ -82,10 +85,13 @@ the others*, or blur breaks entirely. Always check the inspector for which fork 
 active before tuning — writing settings to a disabled fork's `Effect-*` group
 silently does nothing.
 
-> **This machine currently runs Glass** (`glassEnabled=true`, stock `blur` off). Its
-> dock/menu blur is gated by `[Effect-glass] BlurDocks` / `BlurMenus` (both default
-> true); strength is `[Effect-glass] BlurStrength` (0–15). Apply Glass changes with
-> `reconfigureEffect glass`, **never** `/KWin reconfigure`.
+> **This machine currently runs stock `blur`** (`blurEnabled=true`, `BlurStrength=15`;
+> Glass/forceblur off — verified via `scripts/effect-state.sh`). Stock blur honours
+> `/KWin reconfigure`. The Glass fork *is installed* (`kwin-effects-glass-git`) and can
+> be switched in (see "Switch between blur forks" below) — its dock/menu blur is gated
+> by `[Effect-glass] BlurDocks` / `BlurMenus`, strength `[Effect-glass] BlurStrength`,
+> applied with `reconfigureEffect glass` (**never** `/KWin reconfigure`). Always run the
+> inspector first — the active fork can change.
 
 ## Common tasks
 
@@ -180,15 +186,55 @@ https://discuss.kde.org/t/help-with-custom-qsb-shaders-in-kwin-plasma-6-wayland/
 
 ### Interactive aurora wallpaper (custom GLSL wallpaper plugin)
 Layer 9 also ships a custom **Plasma 6 wallpaper plugin** `com.nimbus.aurora`
-(`9-gpu-effects/interactive-bg/`) — an animated, cursor-reactive, light/dark-aware
-GLSL aurora drawn by a `ShaderEffect` on the QtQuick scene graph (NOT a KWin effect).
-This is the easiest path to a *full-screen custom shader background* without touching
-KWin's private headers. Author `contents/shaders/aurora.frag` (Vulkan GLSL,
-`#version 440`), compile with `/usr/lib/qt6/bin/qsb --qt6`, install/activate via
-`interactive-bg/apply.sh` (revert: `restore.sh`). Plasma-6 wallpaper gotchas
-(WallpaperItem root, no `Kirigami.Theme` scheme tracking → poll `kdeglobals`) and the
-window-reactive design are written up in `interactive-bg/README.md` +
-`WINDOW-REACTIVE-HANDOFF.md`.
+(`9-gpu-effects/interactive-bg/`) — an animated, cursor/window/music-reactive,
+light/dark-aware GLSL background on the QtQuick scene graph (NOT a KWin effect). The
+easiest path to a *full-screen custom shader background* without KWin's private headers.
+Author `contents/shaders/*.frag` (Vulkan GLSL `#version 440`), compile with
+`/usr/lib/qt6/bin/qsb --qt6`, install/activate via `interactive-bg/apply.sh` (compiles
+**all** `*.frag`; revert with `restore.sh`). Plasma-6 wallpaper gotchas (WallpaperItem
+root, no `Kirigami.Theme` scheme tracking → poll `kdeglobals`) are in
+`interactive-bg/README.md`.
+
+**Styles** (config `Style` 0–8): 0–7 are single-pass procedural looks in `aurora.frag`
+(Flow/Hills/Silk/Caustics/Ink/Laserwave/Vaporwave/Cyberpunk); **8 "Liquid"** is a real
+**multi-pass GPU fluid** (Eulerian stable-fluids) rendered by `FluidLayer.qml` +
+`fluid_{velocity,pressure,dye,display}.frag`, swapped in via a `Loader` when selected.
+
+**Multi-pass float feedback in pure QML (the key technique):** `ShaderEffectSource`
+exposes `format: ShaderEffectSource.RGBA16F` (and `RGBA32F`) + `recursive: true` +
+`live: true` → ping-pong **float** feedback buffers, enough precision for real
+simulations (velocity/pressure/dye). 8-bit (default RGBA8) bands/drifts and is useless
+for this. This powers (a) the Liquid fluid and (b) a **shared reactive feedback buffer**
+`react.frag` → `reactBuf` that accumulates persistent cursor trails, music beat-ripples
+and window wakes, decaying/diffusing each frame; `aurora.frag` samples it (`reactTex`)
+for glow + flow-displacement, so EVERY style reacts with lingering motion, not just an
+instantaneous response. Reactivity data comes from two `systemd --user` bridges:
+`nimbus-aurora-bridge` (windows → `windows.json`) and `nimbus-aurora-audio`
+(pw-cat→FFT → `audio.json`); enable music with `interactive-bg/audio-apply.sh`.
+
+Switch style live (config change needs a plugin *bounce*, not a same-id no-op):
+```bash
+qdbus6 org.kde.plasmashell /PlasmaShell evaluateScript '
+  var d=desktops()[0]; d.currentConfigGroup=["Wallpaper","com.nimbus.aurora","General"];
+  d.writeConfig("Style", 8);'                                  # 8 = Liquid
+# then bounce so the running plugin re-reads config:
+qdbus6 org.kde.plasmashell /PlasmaShell evaluateScript 'desktops()[0].wallpaperPlugin="org.kde.image"'
+qdbus6 org.kde.plasmashell /PlasmaShell evaluateScript 'desktops()[0].wallpaperPlugin="com.nimbus.aurora"'
+```
+Verify QML *rendering* (not just load) headlessly with `item.grabToImage(...saveToFile)`
+in a tiny `qml -I <dir> harness.qml` — qmllint/`QQmlComponent.create` check construction,
+not whether the feedback actually renders.
+
+### Standalone GPU fluid engine — Layer 10 (`10-shader-engine/`)
+The max-power *showpiece* track: a standalone **Rust / bevy 0.18 / wgpu** app
+(`nimbus-flux`) running a real compute-shader Eulerian fluid (ink/mercury/water) at the
+display refresh rate — NOT the desktop, a separate window you launch. Build+run with
+`bash 10-shader-engine/run.sh`; install (release build + app-menu launcher) /revert with
+`10-shader-engine/{install,revert}.sh`. Use this when you want compute shaders / particle
+sims that exceed what QtQuick ShaderEffect can do; use the wallpaper "Liquid" style above
+when you want it integrated into the actual desktop. Headless-verify a frame with
+`NIMBUS_FLUX_CAPTURE=1` (saves `/tmp/nimbus-flux-frame.png`, logs FPS). Asset note: a bare
+binary looks for `assets/` next to itself — `run.sh` sets `BEVY_ASSET_ROOT`.
 
 ## Troubleshooting
 
