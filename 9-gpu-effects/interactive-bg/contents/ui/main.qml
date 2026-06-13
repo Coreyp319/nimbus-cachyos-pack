@@ -1,5 +1,5 @@
 /*
- * WhiteSur Aurora — cursor-reactive wallpaper (Plasma 6).
+ * Nimbus Aurora — cursor-reactive wallpaper (Plasma 6).
  *
  * Renders contents/shaders/aurora.frag.qsb full-screen via a ShaderEffect on the
  * QtQuick scene graph. Time is frame-synced; the pointer is tracked hover-only so
@@ -78,8 +78,8 @@ WallpaperItem {
         onNewData: (source, data) => {
             const dir = (data["stdout"] || "").trim()
             if (dir.length > 0) {
-                root.statePath = "file://" + dir + "/whitesur-aurora/windows.json"
-                root.audioPath = "file://" + dir + "/whitesur-aurora/audio.json"
+                root.statePath = "file://" + dir + "/nimbus-aurora/windows.json"
+                root.audioPath = "file://" + dir + "/nimbus-aurora/audio.json"
             }
             disconnectSource(source)
         }
@@ -241,7 +241,7 @@ WallpaperItem {
         property vector4d uActiveWin: Qt.vector4d(0, 0, 0, 0)
         property vector2d uActiveVel: Qt.vector2d(0, 0)
         property real     uActiveMove: 0.0
-        Behavior on uActiveMove { NumberAnimation { duration: 450; easing.type: Easing.OutCubic } }
+        Behavior on uActiveMove { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
 
         // music reactivity (fed by pollAudio/applyAudio). Bands eased so they
         // glide; uBeat is left un-eased so the ripple fires crisply.

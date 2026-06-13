@@ -4,12 +4,12 @@
 set -uo pipefail
 PURGE="${1:-}"
 
-SVC="$HOME/.local/share/kio/servicemenus/whitesur-quicklook.desktop"
+SVC="$HOME/.local/share/kio/servicemenus/nimbus-quicklook.desktop"
 RC_DIR="$HOME/.local/share/kxmlgui5/dolphin"
 RC="$RC_DIR/dolphinui.rc"
-NAME='servicemenu_whitesur-quicklook.desktop::quickLook'
+NAME='servicemenu_nimbus-quicklook.desktop::quickLook'
 KR="$HOME/.config/kwinrulesrc"
-RULE_ID="whitesur-quicklook-kiview"
+RULE_ID="nimbus-quicklook-kiview"
 
 echo "1/4 Removing the Quick Look service menu…"
 rm -f "$SVC"

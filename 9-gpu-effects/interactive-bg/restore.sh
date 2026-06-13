@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Revert the WhiteSur Aurora wallpaper: switch the desktop(s) back to whatever
+# Revert the Nimbus Aurora wallpaper: switch the desktop(s) back to whatever
 # was active before apply.sh ran (saved state), or org.kde.image as a fallback.
 # Pass --purge to also delete the installed plugin. Run as your normal user.
 set -uo pipefail
 PURGE="${1:-}"
-PLUGIN_ID="com.whitesur.aurora"
+PLUGIN_ID="com.nimbus.aurora"
 DEST="$HOME/.local/share/plasma/wallpapers/$PLUGIN_ID"
-STATE="$HOME/.cache/whitesur-gpu-effects/aurora-prev-wallpaper"
+STATE="$HOME/.cache/nimbus-gpu-effects/aurora-prev-wallpaper"
 
 ok(){   printf '  \033[32m✓\033[0m %s\n' "$1"; }
 warn(){ printf '  \033[33m!\033[0m %s\n' "$1"; }

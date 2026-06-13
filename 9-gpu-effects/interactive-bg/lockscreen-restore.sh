@@ -2,8 +2,8 @@
 # Revert the lock screen to whatever wallpaper it used before lockscreen-apply.sh
 # (saved state), or org.kde.image as a fallback. Run as your normal user.
 set -uo pipefail
-PLUGIN_ID="com.whitesur.aurora"
-LOCKSTATE="$HOME/.cache/whitesur-gpu-effects/aurora-prev-lockscreen"
+PLUGIN_ID="com.nimbus.aurora"
+LOCKSTATE="$HOME/.cache/nimbus-gpu-effects/aurora-prev-lockscreen"
 RC="kscreenlockerrc"
 
 ok(){   printf '  \033[32m✓\033[0m %s\n' "$1"; }

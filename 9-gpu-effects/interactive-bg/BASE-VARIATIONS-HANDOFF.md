@@ -1,4 +1,4 @@
-# Handoff — base-look variations for `com.whitesur.aurora`
+# Handoff — base-look variations for `com.nimbus.aurora`
 
 Spec for adding selectable **base styles** to the aurora wallpaper. The current
 single style (a domain-warped fbm "flow") becomes one of several the user picks in
@@ -122,7 +122,7 @@ All slow + dreamy to match Big Sur; each must define `shade` and use only `c0..c
 - Deploy + reload (editing the installed file alone is NOT enough — plasmashell
   serves stale compiled QML):
   ```bash
-  cp contents/shaders/aurora.frag{,.qsb} ~/.local/share/plasma/wallpapers/com.whitesur.aurora/contents/shaders/
+  cp contents/shaders/aurora.frag{,.qsb} ~/.local/share/plasma/wallpapers/com.nimbus.aurora/contents/shaders/
   rm -rf ~/.cache/plasmashell/qmlcache
   systemctl --user restart plasma-plasmashell
   ```

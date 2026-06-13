@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Install + start the WhiteSur Aurora *music-reactivity* bridge: a systemd --user
+# Install + start the Nimbus Aurora *music-reactivity* bridge: a systemd --user
 # service that taps the default sink's monitor (pw-cat), FFTs it (numpy), and
 # writes bass/mid/treble/level/beat to the runtime state file the wallpaper polls.
 # The wallpaper consumer + shader ship inside the plugin (apply.sh). Opt-in; only
 # useful once the aurora is the active wallpaper. Reversible: audio-restore.sh
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-DAEMON_DIR="$HOME/.local/share/whitesur-aurora"
-UNIT="whitesur-aurora-audio.service"
+DAEMON_DIR="$HOME/.local/share/nimbus-aurora"
+UNIT="nimbus-aurora-audio.service"
 UNIT_DEST="$HOME/.config/systemd/user/$UNIT"
 
 ok(){   printf '  \033[32m✓\033[0m %s\n' "$1"; }

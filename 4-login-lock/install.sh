@@ -39,6 +39,6 @@ type=image
 background=$THEME_DIR/bigsur.jpg
 CONF
 sudo mkdir -p /etc/sddm.conf.d
-printf '[Theme]\nCurrent=breeze\n' | sudo tee /etc/sddm.conf.d/10-whitesur.conf >/dev/null
+printf '[Theme]\nCurrent=breeze\n' | sudo tee /etc/sddm.conf.d/10-nimbus.conf >/dev/null
 
 echo ":: Done. Lock screen is live now; SDDM applies at the next login screen."

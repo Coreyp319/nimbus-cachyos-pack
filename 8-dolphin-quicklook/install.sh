@@ -30,10 +30,10 @@ ok(){   printf '  \033[32m✓\033[0m %s\n' "$1"; }
 msg(){  printf '\n\033[1m:: %s\033[0m\n' "$1"; }
 warn(){ printf '  \033[33m!\033[0m %s\n' "$1"; }
 
-SVC="$HOME/.local/share/kio/servicemenus/whitesur-quicklook.desktop"
+SVC="$HOME/.local/share/kio/servicemenus/nimbus-quicklook.desktop"
 RC_DIR="$HOME/.local/share/kxmlgui5/dolphin"     # KF6 keeps the kxmlgui5 dir name
 RC="$RC_DIR/dolphinui.rc"
-NAME='servicemenu_whitesur-quicklook.desktop::quickLook'   # ServiceMenuShortcutManager naming
+NAME='servicemenu_nimbus-quicklook.desktop::quickLook'   # ServiceMenuShortcutManager naming
 
 # --- 1. previewer: kiview from git master (built via the bundled PKGBUILD) ----
 # The AUR `kiview` (v1.1) only has the D-Bus "grab the active Dolphin selection"
@@ -56,7 +56,7 @@ fi
 msg "Installing the Quick Look service menu…"
 # Must be executable: KIO refuses to run a user service menu carrying Exec=
 # unless the file is marked executable ("not authorized" otherwise).
-install -Dm755 "$HERE/whitesur-quicklook.desktop" "$SVC"
+install -Dm755 "$HERE/nimbus-quicklook.desktop" "$SVC"
 kbuildsycoca6 >/dev/null 2>&1 || true
 ok "Quick Look entry added to Dolphin's right-click menu"
 
@@ -86,9 +86,9 @@ fi
 # Wayland app-id; written to kwinrulesrc. (Close it with Space/Esc/Q.)
 msg "Making the preview popup borderless (KWin rule)…"
 KR="$HOME/.config/kwinrulesrc"
-RULE_ID="whitesur-quicklook-kiview"
+RULE_ID="nimbus-quicklook-kiview"
 [ -f "$KR" ] && [ ! -f "$KR.orig" ] && cp "$KR" "$KR.orig"
-kwriteconfig6 --file kwinrulesrc --group "$RULE_ID" --key Description "WhiteSur — Quick Look (kiview) borderless"
+kwriteconfig6 --file kwinrulesrc --group "$RULE_ID" --key Description "Nimbus — Quick Look (kiview) borderless"
 kwriteconfig6 --file kwinrulesrc --group "$RULE_ID" --key wmclass "io.github.nyre221.kiview"
 kwriteconfig6 --file kwinrulesrc --group "$RULE_ID" --key wmclassmatch 1
 kwriteconfig6 --file kwinrulesrc --group "$RULE_ID" --key noborder true

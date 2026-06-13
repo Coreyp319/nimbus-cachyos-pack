@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Pick the swaync CSS that matches the active KDE color scheme, then live-reload.
 # Mirrors how 2-settings-refine/bin/refine-icons reads the scheme from kdeglobals,
-# so the existing whitesur-theme-toggle.sh (Meta+Ctrl+T) repaints swaync for free
+# so the existing nimbus-theme-toggle.sh (Meta+Ctrl+T) repaints swaync for free
 # via the kdeglobals path-watcher — no edits to Layer 1 needed.
 set -eu
 

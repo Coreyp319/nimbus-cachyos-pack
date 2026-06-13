@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""WhiteSur Aurora — music-reactivity bridge.
+"""Nimbus Aurora — music-reactivity bridge.
 
 Taps the default sink's *monitor* with `pw-cat`, runs an FFT, and writes
 bass/mid/treble/level/beat (each 0..1, AGC-normalised) to
-$XDG_RUNTIME_DIR/whitesur-aurora/audio.json at ~60 Hz. The wallpaper polls that
+$XDG_RUNTIME_DIR/nimbus-aurora/audio.json at ~60 Hz. The wallpaper polls that
 file (same pattern as the window bridge) and feeds the shader.
 
 It listens to the user's OWN audio output monitor — no microphone, no window
@@ -28,7 +28,7 @@ WIN    = 2048                 # FFT window
 OUT_HZ = 60
 
 RUNTIME  = os.environ.get("XDG_RUNTIME_DIR") or "/run/user/%d" % os.getuid()
-OUT_DIR  = os.path.join(RUNTIME, "whitesur-aurora")
+OUT_DIR  = os.path.join(RUNTIME, "nimbus-aurora")
 OUT_FILE = os.path.join(OUT_DIR, "audio.json")
 
 

@@ -1,7 +1,7 @@
 # Handoff — make the aurora react to windows being dragged
 
 Spec + hard-won constraints for whoever builds the window-movement-reactive feature
-of `com.whitesur.aurora`. The cursor-reactive base (v1) is shipped; this is the
+of `com.nimbus.aurora`. The cursor-reactive base (v1) is shipped; this is the
 deferred v2. Read `README.md` first for the plugin layout.
 
 ## Goal
@@ -21,7 +21,7 @@ need a bridge:
 KWin script ──D-Bus──► bridge daemon ──state file──► wallpaper (main.qml) ──► shader
 (live window     (callDBus; the         (atomic write;     (polls the file,
  geometry +       script sandbox         e.g. $XDG_RUNTIME   smooths, feeds
- move events)     CANNOT write files)    _DIR/whitesur-      shader uniforms)
+ move events)     CANNOT write files)    _DIR/nimbus-      shader uniforms)
                                          aurora/windows.json)
 ```
 
@@ -37,13 +37,13 @@ KWin script ──D-Bus──► bridge daemon ──state file──► wallpap
   colour-scheme probe in `main.qml`). Reuse that to `cat` the state file, or read it
   with `XMLHttpRequest` on a `file://` URL. Poll at ~30–60 Hz and smooth in QML.
 - Net: you need **one small bridge daemon** that owns a D-Bus name (e.g.
-  `org.whitesur.Aurora`), receives `UpdateWindows(s json)` from the KWin script, and
+  `org.nimbus.Aurora`), receives `UpdateWindows(s json)` from the KWin script, and
   writes the state file atomically. `dbus-python` + a `GLib` main loop are available
   (so is `Pillow`, if needed for the sibling colour feature). ~50 lines.
 
 ## Component specs
 
-### 1. KWin script  (`~/.local/share/kwin/scripts/whitesur-aurora-windows/`)
+### 1. KWin script  (`~/.local/share/kwin/scripts/nimbus-aurora-windows/`)
 Connect (KWin 6.x — **verify exact names against the running KWin, the scripting API
 drifts**; quick check below):
 - `workspace.windowList()` → array of Window. Per-window: `frameGeometry`
@@ -54,7 +54,7 @@ drifts**; quick check below):
   `workspace.windowActivated`; per-window `frameGeometryChanged`,
   `interactiveMoveResizeStarted/Stepped/Finished`.
 On any change, build a compact JSON (window rects + active index + a moving flag +
-computed velocity) and `callDBus("org.whitesur.Aurora","/","org.whitesur.Aurora",
+computed velocity) and `callDBus("org.nimbus.Aurora","/","org.nimbus.Aurora",
 "UpdateWindows", json)`. **Throttle** move events to ~30–60 Hz (coalesce with a
 QTimer / timestamp guard) — `frameGeometryChanged` fires very rapidly during a drag.
 
@@ -64,9 +64,9 @@ then `start`, and `print()` `workspace.windowList().length` + a window's keys; w
 `journalctl --user -f | grep js`.
 
 ### 2. Bridge daemon  (`interactive-bg/aurora-bridge.py`, a systemd --user service)
-- `dbus.service.Object` on the session bus, name `org.whitesur.Aurora`, method
+- `dbus.service.Object` on the session bus, name `org.nimbus.Aurora`, method
   `UpdateWindows(json)`.
-- On receive: write `${XDG_RUNTIME_DIR}/whitesur-aurora/windows.json` atomically
+- On receive: write `${XDG_RUNTIME_DIR}/nimbus-aurora/windows.json` atomically
   (write tmp + `os.rename`). Keep it tiny.
 - Run via a user unit installed/removed by the layer; opt-in.
 
@@ -93,7 +93,7 @@ then `start`, and `print()` `workspace.windowList().length` + a window's keys; w
 
 ## Install / revert wiring
 Mirror into Layer 9: install copies the KWin script + enables it in `kwinrc`
-`[Plugins] whitesur-aurora-windowsEnabled=true` (reload via
+`[Plugins] nimbus-aurora-windowsEnabled=true` (reload via
 `qdbus6 org.kde.KWin /Effects` is for effects; for scripts use
 `org.kde.kwin.Scripting`), installs+starts the user service, and adds a config
 toggle ("React to window movement"). Revert disables/removes all three and the

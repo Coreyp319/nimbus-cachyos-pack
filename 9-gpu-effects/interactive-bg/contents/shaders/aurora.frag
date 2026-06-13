@@ -1,6 +1,6 @@
 #version 440
 //
-// WhiteSur Aurora — cursor-reactive animated background.
+// Nimbus Aurora — cursor-reactive animated background.
 // Qt 6 ShaderEffect fragment shader (Vulkan-style GLSL; compile with `qsb`).
 //
 // A domain-warped flowing gradient in the Big Sur / WhiteSur palette. Drifts on
@@ -77,6 +77,19 @@ float fbm(vec2 p) {
     float v = 0.0, a = 0.55;
     mat2 rot = mat2(0.80, 0.60, -0.60, 0.80);
     for (int i = 0; i < 5; i++) {
+        v += a * vnoise(p);
+        p = rot * p * 2.02 + 11.3;
+        a *= 0.5;
+    }
+    return v;
+}
+// cheaper 3-octave fbm for SMOOTH domain-warp displacements and feathering, where
+// the top two octaves are sub-pixel after scaling and add cost but no visible
+// detail. Reserve the full 5-octave fbm() for the visible field samples.
+float fbm3(vec2 p) {
+    float v = 0.0, a = 0.6;
+    mat2 rot = mat2(0.80, 0.60, -0.60, 0.80);
+    for (int i = 0; i < 3; i++) {
         v += a * vnoise(p);
         p = rot * p * 2.02 + 11.3;
         a *= 0.5;
@@ -177,30 +190,30 @@ vec3 ramp(float t, vec3 c0, vec3 c1, vec3 c2, vec3 c3, vec3 c4) {
 // phase offsets and crossfade — the advection, not a static warp, is what makes the
 // motion bend around windows.
 float flowField(vec2 base, float t, out float rx) {
-    vec2 q = vec2(fbm(base + vec2(0.0, 0.12 * t)),
-                  fbm(base + vec2(5.2, 1.7 - 0.10 * t)));
-    vec2 r = vec2(fbm(base + 1.8 * q + vec2(1.7, 9.2 + 0.08 * t)),
-                  fbm(base + 1.8 * q + vec2(8.3, 2.8 - 0.07 * t)));
+    vec2 q = vec2(fbm3(base + vec2(0.0, 0.12 * t)),
+                  fbm3(base + vec2(5.2, 1.7 - 0.10 * t)));
+    vec2 r = vec2(fbm3(base + 1.8 * q + vec2(1.7, 9.2 + 0.08 * t)),
+                  fbm3(base + 1.8 * q + vec2(8.3, 2.8 - 0.07 * t)));
     rx = r.x;
-    return fbm(base + 2.2 * r);
+    return fbm(base + 2.2 * r);   // visible field: full 5 octaves
 }
 
 // Caustics' thin ridged web at an already-advected coordinate (advection removed
 // from the internals so the flow-map can drive it). beatThresh widens on a beat.
 float causticField(vec2 wp, float t, float beatThresh) {
-    vec2 warp = vec2(fbm(wp * 0.8 + vec2(0.0,  0.08 * t)),
-                     fbm(wp * 0.8 + vec2(4.0, -0.07 * t))) - 0.5;
+    vec2 warp = vec2(fbm3(wp * 0.8 + vec2(0.0,  0.08 * t)),
+                     fbm3(wp * 0.8 + vec2(4.0, -0.07 * t))) - 0.5;
     vec2 sp   = wp * 1.7 + warp * 0.7;
-    float ridge = abs(fbm(sp) * 2.0 - 1.0);
+    float ridge = abs(fbm(sp) * 2.0 - 1.0);   // visible web: full 5 octaves
     return pow(1.0 - smoothstep(0.0, beatThresh, ridge), 1.4);
 }
 
 // Ink density (turbulent body + filaments) at an already-advected coordinate.
 float inkField(vec2 wp, float t, float mMid, float mBeat) {
-    vec2 warp = vec2(fbm(wp * 1.1 + vec2(0.0, 0.12 * t)),
-                     fbm(wp * 1.1 + vec2(3.7, 0.10 * t))) - 0.5;
+    vec2 warp = vec2(fbm3(wp * 1.1 + vec2(0.0, 0.12 * t)),
+                     fbm3(wp * 1.1 + vec2(3.7, 0.10 * t))) - 0.5;
     vec2 ip   = wp * 1.15 + warp * 1.2;
-    float turb = pow(abs(fbm(ip * 1.7) * 2.0 - 1.0), 1.3);
+    float turb = pow(abs(fbm(ip * 1.7) * 2.0 - 1.0), 1.3);   // visible filaments: 5 octaves
     float body = smoothstep(0.38, 0.66, fbm(ip));
     return pow(clamp(body * (0.85 + 0.6 * turb + 0.25 * mMid)
                      + 0.20 * mBeat * body, 0.0, 1.0), 0.72);
@@ -215,6 +228,14 @@ vec2 windowFlow(vec2 p, vec2 baseV, float t) {
     vec2  V      = baseV;
     float wreact = clamp(uWinReact, 0.0, 1.0);
     if (wreact > 0.001) {
+        // FEATHER (computed ONCE — it's loop-invariant): a clean exp() halo makes the
+        // deflection mirror corner-to-corner (too uniform to read as water), so we
+        // modulate the routing strength with low-freq noise. Anchored to SCREEN
+        // position (not the window centre): a moving window slides THROUGH this
+        // slowly-drifting field, so dragging never makes the feather flicker (keying
+        // it to wc made the noise race with the drag = white shimmer). fbm3 is plenty
+        // for this smooth modulation. Stays > 0 so the current never leaks in.
+        float feather = wreact * (0.45 + 0.85 * fbm3(p * 2.2 + vec2(0.0, 0.4 * t)));
         for (int i = 0; i < 6; i++) {
             if (i >= uWinCount) break;
             vec4 w = winAt(i);
@@ -222,14 +243,8 @@ vec2 windowFlow(vec2 p, vec2 baseV, float t) {
             vec2  wc  = toP(w.xy + 0.5 * w.zw);
             vec2  wh  = 0.5 * w.zw * iResolution / iResolution.y;
             float sd  = max(sdBox(p, wc, wh), 0.0);
-            float g   = exp(-sd * 3.5) * wreact;        // routing reach around the stone
-            // FEATHER: a clean exp() halo makes the deflection mirror corner-to-
-            // corner (too uniform to read as water). Modulate the routing strength
-            // with low-freq noise keyed to THIS window's centre and drifting slowly
-            // in t, so the diversion band ebbs and swells organically around the
-            // perimeter — no two corners match, and each window gets its own pattern.
-            // Stays > 0 so the current never leaks into the box.
-            g *= 0.45 + 0.85 * fbm(p * 2.2 + wc * 4.0 + vec2(0.0, 0.4 * t));
+            if (sd > 1.4) continue;                     // negligible influence -> skip the work
+            float g   = exp(-sd * 3.5) * feather;       // routing reach around the stone
             vec2  nrm = boxNormal(p, wc, wh);           // outward from the box EDGE
             float vn  = dot(V, nrm);                    // <0 = flow heading into it
             V = mix(V, V - min(vn, 0.0) * nrm * 1.2, clamp(g, 0.0, 1.0));  // cancel inward + bow
@@ -444,6 +459,11 @@ void main() {
     float react   = clamp(uWinReact, 0.0, 1.0);
     float winGlow = 0.0;
     vec2  winPush = vec2(0.0);
+    // Flow-mapped styles (0 Flow, 3 Caustics, 4 Ink) route the flow PROPERLY via a
+    // per-pixel velocity + flow-map advection, so the static winPush warp would only
+    // be a lens on top — skip computing it for them (kept for Hills/Silk). winGlow is
+    // still needed by all styles for the edge light below.
+    bool flowMapped = (uStyle == 0 || uStyle == 3 || uStyle == 4);
     if (react > 0.001) {
         for (int i = 0; i < 6; i++) {
             if (i >= uWinCount) break;
@@ -452,8 +472,10 @@ void main() {
             vec2 c = toP(w.xy + 0.5 * w.zw);
             vec2 h = 0.5 * w.zw * iResolution / iResolution.y;
             float sd = max(sdBox(p, c, h), 0.0);          // 0 inside, grows outside
+            if (sd > 1.0) continue;                       // negligible influence -> skip
             float g  = exp(-sd * 5.0);                    // influence hugging the window
             winGlow += g;
+            if (flowMapped) continue;                     // winPush unused for these styles
             // split the current here into its outward-normal and tangential parts.
             // Where it heads INTO the stone (fn<0) push it out (blocking the face)
             // and along the tangent (routing round the sides); at the flanks the push
@@ -464,12 +486,6 @@ void main() {
             vec2  ftan = fdir - fn * nrm;                 // tangential (around) part
             winPush += (ftan * 1.1 - min(fn, 0.0) * nrm * 1.6) * g;
         }
-        // strength of the routing — the main "how much do windows divert the stream"
-        // dial. Up from 0.05: the user wants the stone-in-stream read to be clear.
-        // Skipped for the flow-mapped styles (0 Flow, 3 Caustics, 4 Ink), which route
-        // the flow PROPERLY via a per-pixel velocity + flow-map advection — this
-        // static warp would only be a lens on top. Kept for Hills/Silk.
-        bool flowMapped = (uStyle == 0 || uStyle == 3 || uStyle == 4);
         warpP += winPush * react * 0.08 * (1.0 + 0.4 * energy) * float(!flowMapped);
     }
 

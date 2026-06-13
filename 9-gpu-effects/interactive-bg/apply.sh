@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Install + activate the WhiteSur Aurora interactive wallpaper (Plasma 6).
+# Install + activate the Nimbus Aurora interactive wallpaper (Plasma 6).
 # Idempotent: compiles the shader (if qsb is available, else uses the prebuilt
 # .qsb shipped in the repo), copies the plugin into the user's wallpaper dir,
 # saves the CURRENT wallpaper for revert, and switches the desktop(s) over.
 # Run as your normal user.
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-PLUGIN_ID="com.whitesur.aurora"
+PLUGIN_ID="com.nimbus.aurora"
 DEST="$HOME/.local/share/plasma/wallpapers/$PLUGIN_ID"
-STATE_DIR="$HOME/.cache/whitesur-gpu-effects"
+STATE_DIR="$HOME/.cache/nimbus-gpu-effects"
 STATE="$STATE_DIR/aurora-prev-wallpaper"   # line1: plugin id  line2: image url
 
 ok(){   printf '  \033[32m✓\033[0m %s\n' "$1"; }

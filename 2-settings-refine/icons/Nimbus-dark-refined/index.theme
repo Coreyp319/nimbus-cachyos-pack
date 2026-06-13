@@ -1,5 +1,5 @@
 [Icon Theme]
-Name=WhiteSur Dark Refined
+Name=Nimbus Dark Refined
 Comment=WhiteSur with uniform monochrome System Settings section icons (tone tracks active scheme)
 Inherits=WhiteSur-dark,WhiteSur-light,breeze-dark,hicolor
 Directories=apps/scalable

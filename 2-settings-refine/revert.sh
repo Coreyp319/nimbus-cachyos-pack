@@ -3,7 +3,7 @@
 # Does NOT touch your light/dark choice, color scheme, or main Kvantum selection.
 #   --purge  also deletes the installed theme files from disk.
 set -eu
-NAME="whitesur-refine-icons"
+NAME="nimbus-refine-icons"
 
 echo "1/4 Stopping + removing the theme-aware icon watcher…"
 systemctl --user disable --now "$NAME.path" 2>/dev/null || true
@@ -22,15 +22,15 @@ kwriteconfig6 --file kdeglobals --group Icons --key Theme "$stock"
 echo "3/4 Un-selecting the Kvantum whitespace fork if active…"
 cur=$(kreadconfig6 --file "$HOME/.config/Kvantum/kvantum.kvconfig" --group General --key theme 2>/dev/null || echo "")
 case "$cur" in
-  WhiteSurRefinedDark) kwriteconfig6 --file "$HOME/.config/Kvantum/kvantum.kvconfig" --group General --key theme WhiteSurDark ;;
-  WhiteSurRefined)     kwriteconfig6 --file "$HOME/.config/Kvantum/kvantum.kvconfig" --group General --key theme WhiteSur ;;
+  NimbusRefinedDark) kwriteconfig6 --file "$HOME/.config/Kvantum/kvantum.kvconfig" --group General --key theme WhiteSurDark ;;
+  NimbusRefined)     kwriteconfig6 --file "$HOME/.config/Kvantum/kvantum.kvconfig" --group General --key theme WhiteSur ;;
 esac
 
 if [ "${1:-}" = "--purge" ]; then
   echo "4/4 Purging installed refine files…"
-  rm -rf "$HOME/.config/Kvantum/WhiteSurRefined" \
-         "$HOME/.config/Kvantum/WhiteSurRefinedDark" \
-         "$HOME/.local/share/icons/WhiteSur-dark-refined" \
+  rm -rf "$HOME/.config/Kvantum/NimbusRefined" \
+         "$HOME/.config/Kvantum/NimbusRefinedDark" \
+         "$HOME/.local/share/icons/Nimbus-dark-refined" \
          "$HOME/.local/bin/$NAME"
 else
   echo "4/4 Leaving files on disk (run with --purge to delete). Unselected = harmless."

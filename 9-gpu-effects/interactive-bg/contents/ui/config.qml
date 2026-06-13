@@ -1,5 +1,5 @@
 /*
- * Settings page for WhiteSur Aurora (System Settings → Wallpaper → Configure).
+ * Settings page for Nimbus Aurora (System Settings → Wallpaper → Configure).
  * Property names are cfg_<Key> — Plasma binds them to contents/config/main.xml.
  */
 import QtQuick

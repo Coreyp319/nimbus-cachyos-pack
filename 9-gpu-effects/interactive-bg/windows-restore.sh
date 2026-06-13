@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Revert the WhiteSur Aurora window-reactivity bridge: stop + disable the daemon,
+# Revert the Nimbus Aurora window-reactivity bridge: stop + disable the daemon,
 # unload + disable the KWin script, drop the state file. Pass --purge to also
 # delete the installed daemon, user unit and KWin script. Run as your normal user.
 set -uo pipefail
 PURGE="${1:-}"
-SCRIPT_ID="whitesur-aurora-windows"
+SCRIPT_ID="nimbus-aurora-windows"
 KWIN_DEST="$HOME/.local/share/kwin/scripts/$SCRIPT_ID"
-DAEMON_DIR="$HOME/.local/share/whitesur-aurora"
-UNIT="whitesur-aurora-bridge.service"
+DAEMON_DIR="$HOME/.local/share/nimbus-aurora"
+UNIT="nimbus-aurora-bridge.service"
 UNIT_DEST="$HOME/.config/systemd/user/$UNIT"
-STATE="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/whitesur-aurora/windows.json"
+STATE="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/nimbus-aurora/windows.json"
 
 ok(){   printf '  \033[32m✓\033[0m %s\n' "$1"; }
 

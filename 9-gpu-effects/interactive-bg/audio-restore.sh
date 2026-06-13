@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Stop + remove the WhiteSur Aurora music-reactivity bridge. Pass --purge to also
+# Stop + remove the Nimbus Aurora music-reactivity bridge. Pass --purge to also
 # delete the installed daemon script. Run as your normal user.
 set -uo pipefail
 PURGE="${1:-}"
-DAEMON_DIR="$HOME/.local/share/whitesur-aurora"
-UNIT="whitesur-aurora-audio.service"
+DAEMON_DIR="$HOME/.local/share/nimbus-aurora"
+UNIT="nimbus-aurora-audio.service"
 UNIT_DEST="$HOME/.config/systemd/user/$UNIT"
 RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
@@ -12,7 +12,7 @@ ok(){ printf '  \033[32m✓\033[0m %s\n' "$1"; }
 
 systemctl --user disable --now "$UNIT" 2>/dev/null && ok "music bridge stopped + disabled" || \
   echo "    music bridge wasn't running."
-rm -f "$RUNTIME/whitesur-aurora/audio.json"
+rm -f "$RUNTIME/nimbus-aurora/audio.json"
 
 if [ "$PURGE" = "--purge" ]; then
   rm -f "$UNIT_DEST" "$DAEMON_DIR/aurora-audio-bridge.py"

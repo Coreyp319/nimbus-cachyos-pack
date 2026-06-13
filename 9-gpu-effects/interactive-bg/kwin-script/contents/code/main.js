@@ -1,19 +1,19 @@
 /*
- * WhiteSur Aurora — window-reactivity bridge (KWin script).
+ * Nimbus Aurora — window-reactivity bridge (KWin script).
  *
  * KWin scripts are the ONLY thing that can see live window geometry on Wayland,
  * but they are sandboxed: no filesystem. So this script watches windows and
  * pushes their geometry (+ the moving window's velocity) OUT over D-Bus to the
- * aurora bridge daemon (org.whitesur.Aurora), which writes the state file the
+ * aurora bridge daemon (org.nimbus.Aurora), which writes the state file the
  * wallpaper polls. See interactive-bg/README.md.
  *
  * Geometry is sent in GLOBAL screen pixels (frameGeometry is global); the
  * wallpaper normalises to its own screen. We send up to MAXWINS rects + the
  * actively-moving one with a computed velocity, throttled to ~MIN_DT ms.
  */
-const SERVICE = "org.whitesur.Aurora";
+const SERVICE = "org.nimbus.Aurora";
 const OBJPATH = "/";
-const IFACE   = "org.whitesur.Aurora";
+const IFACE   = "org.nimbus.Aurora";
 const METHOD  = "UpdateWindows";
 const MAXWINS = 6;
 const MIN_DT  = 30;          // ms between sends (~33 Hz); drags fire much faster

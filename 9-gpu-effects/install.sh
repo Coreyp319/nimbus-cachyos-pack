@@ -23,7 +23,7 @@
 # Reversible via revert.sh.
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-BUILD="$HOME/.cache/whitesur-gpu-effects"
+BUILD="$HOME/.cache/nimbus-gpu-effects"
 [ "$(id -u)" -eq 0 ] && { echo "Run as your normal user, not root."; exit 1; }
 command -v pacman >/dev/null || { echo "This layer targets Arch/CachyOS (pacman not found)."; exit 1; }
 
@@ -106,12 +106,12 @@ if ask "Desktop shaders (CAS sharpening / color grading over the whole screen)";
 fi
 
 # ---------------------------------------------------------------------------
-# 3. Interactive aurora wallpaper (com.whitesur.aurora) — a cursor-reactive
+# 3. Interactive aurora wallpaper (com.nimbus.aurora) — a cursor-reactive
 #    Big Sur gradient rendered by a GLSL shader on the QtQuick scene graph.
 #    Self-contained Plasma 6 wallpaper plugin under interactive-bg/.
 # ---------------------------------------------------------------------------
 if ask "Interactive aurora wallpaper (cursor-reactive animated background)"; then
-  msg "Interactive aurora wallpaper (com.whitesur.aurora)…"
+  msg "Interactive aurora wallpaper (com.nimbus.aurora)…"
   if [ "${XDG_SESSION_TYPE:-}" != "wayland" ]; then
     warn "needs a Plasma 6 Wayland session — skipping."
   else

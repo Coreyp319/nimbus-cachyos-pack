@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Install + activate the WhiteSur Aurora *window-reactivity* bridge:
+# Install + activate the Nimbus Aurora *window-reactivity* bridge:
 #   1. the KWin script  (sees live window geometry, pushes it over D-Bus)
-#   2. the bridge daemon (D-Bus name org.whitesur.Aurora → state file)  as a
+#   2. the bridge daemon (D-Bus name org.nimbus.Aurora → state file)  as a
 #      systemd --user service
 # The wallpaper consumer + shader ship inside the plugin (apply.sh). Opt-in;
 # only useful once the aurora is the active wallpaper. Reversible: windows-restore.sh
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-SCRIPT_ID="whitesur-aurora-windows"
+SCRIPT_ID="nimbus-aurora-windows"
 KWIN_DEST="$HOME/.local/share/kwin/scripts/$SCRIPT_ID"
-DAEMON_DIR="$HOME/.local/share/whitesur-aurora"
-UNIT="whitesur-aurora-bridge.service"
+DAEMON_DIR="$HOME/.local/share/nimbus-aurora"
+UNIT="nimbus-aurora-bridge.service"
 UNIT_DEST="$HOME/.config/systemd/user/$UNIT"
 
 ok(){   printf '  \033[32m✓\033[0m %s\n' "$1"; }

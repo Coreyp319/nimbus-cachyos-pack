@@ -5,7 +5,7 @@
 set -uo pipefail
 PURGE="${1:-}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-BUILD="$HOME/.cache/whitesur-gpu-effects"
+BUILD="$HOME/.cache/nimbus-gpu-effects"
 reconf(){ qdbus6 org.kde.KWin /KWin reconfigure >/dev/null 2>&1 || true; }                       # stock effects
 eff(){ qdbus6 org.kde.KWin /Effects "org.kde.kwin.Effects.$1" "$2" >/dev/null 2>&1 || true; }    # forks
 enabled(){ [ "$(kreadconfig6 --file kwinrc --group Plugins --key "${1}Enabled" 2>/dev/null)" = "true" ]; }

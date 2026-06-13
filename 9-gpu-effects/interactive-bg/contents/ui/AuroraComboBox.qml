@@ -1,5 +1,5 @@
 /*
- * AuroraComboBox — an expressive QQC2.ComboBox for the WhiteSur Aurora config UI,
+ * AuroraComboBox — an expressive QQC2.ComboBox for the Nimbus Aurora config UI,
  * matching AuroraSlider's language so the whole form feels of-a-piece.
  *
  * Micro-interactions:

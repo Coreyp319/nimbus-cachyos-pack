@@ -1,12 +1,12 @@
 [Unit]
-Description=WhiteSur Aurora music-reactivity bridge (audio monitor → FFT → state file)
+Description=Nimbus Aurora music-reactivity bridge (audio monitor → FFT → state file)
 Documentation=man:systemd.service(5)
 PartOf=graphical-session.target
 After=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 %h/.local/share/whitesur-aurora/aurora-audio-bridge.py
+ExecStart=/usr/bin/python3 %h/.local/share/nimbus-aurora/aurora-audio-bridge.py
 Restart=on-failure
 RestartSec=2
 # Reads the user's own audio-output monitor and writes a small JSON to the runtime

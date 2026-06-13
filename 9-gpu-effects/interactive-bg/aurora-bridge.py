@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""WhiteSur Aurora — window-reactivity bridge daemon.
+"""Nimbus Aurora — window-reactivity bridge daemon.
 
 KWin scripts can see live window geometry but cannot write files; the wallpaper
 can read files but cannot see other windows. This tiny daemon is the hinge: it
-owns the D-Bus name org.whitesur.Aurora, receives UpdateWindows(json) from the
+owns the D-Bus name org.nimbus.Aurora, receives UpdateWindows(json) from the
 KWin script, and writes the payload atomically to a state file the wallpaper
-polls ($XDG_RUNTIME_DIR/whitesur-aurora/windows.json).
+polls ($XDG_RUNTIME_DIR/nimbus-aurora/windows.json).
 
 Deps: dbus-python + PyGObject (GLib). Run as a systemd --user service.
 """
@@ -18,11 +18,11 @@ import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import GLib
 
-BUS_NAME = "org.whitesur.Aurora"
+BUS_NAME = "org.nimbus.Aurora"
 OBJ_PATH = "/"
 
 RUNTIME = os.environ.get("XDG_RUNTIME_DIR") or "/run/user/%d" % os.getuid()
-OUT_DIR = os.path.join(RUNTIME, "whitesur-aurora")
+OUT_DIR = os.path.join(RUNTIME, "nimbus-aurora")
 OUT_FILE = os.path.join(OUT_DIR, "windows.json")
 
 

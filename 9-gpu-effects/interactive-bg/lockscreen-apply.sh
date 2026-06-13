@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Use the WhiteSur Aurora wallpaper on the LOCK SCREEN (Plasma 6 kscreenlocker).
+# Use the Nimbus Aurora wallpaper on the LOCK SCREEN (Plasma 6 kscreenlocker).
 # Mirrors the current DESKTOP aurora settings into kscreenlockerrc's [Greeter],
 # backing up whatever the lock screen used before so it's fully reversible.
 #
@@ -11,9 +11,9 @@
 # cursor-reactive animated wallpaper. Re-run this after changing desktop settings
 # to re-sync. Run as your normal user.
 set -uo pipefail
-PLUGIN_ID="com.whitesur.aurora"
+PLUGIN_ID="com.nimbus.aurora"
 DEST="$HOME/.local/share/plasma/wallpapers/$PLUGIN_ID"
-STATE_DIR="$HOME/.cache/whitesur-gpu-effects"
+STATE_DIR="$HOME/.cache/nimbus-gpu-effects"
 LOCKSTATE="$STATE_DIR/aurora-prev-lockscreen"   # line1: plugin id  line2: image path
 RC="kscreenlockerrc"
 

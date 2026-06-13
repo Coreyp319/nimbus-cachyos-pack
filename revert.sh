@@ -37,11 +37,11 @@ echo "── Layer 1: base mac desktop ──"
 # float-gap SVG edit). The Global-Theme reset and panel removal stay MANUAL —
 # they depend on your chosen replacement and can't be scripted without guessing
 # your layout.
-rm -f "$HOME/.local/bin/whitesur-theme-toggle.sh" \
-      "$HOME/.local/share/applications/whitesur-theme-toggle.desktop"
-kwriteconfig6 --file kglobalshortcutsrc --group "whitesur-theme-toggle.desktop" \
+rm -f "$HOME/.local/bin/nimbus-theme-toggle.sh" \
+      "$HOME/.local/share/applications/nimbus-theme-toggle.desktop"
+kwriteconfig6 --file kglobalshortcutsrc --group "nimbus-theme-toggle.desktop" \
   --key "_launch" "none,none,Toggle Light / Dark Theme" 2>/dev/null || true
-rm -rf "$HOME/.local/share/plasma/plasmoids/org.whitesur.dockseparator"
+rm -rf "$HOME/.local/share/plasma/plasmoids/org.nimbus.dockseparator"
 # Restore the original dock float-gap for whichever theme backups exist.
 for THEME in WhiteSur WhiteSur-dark; do
   PBG="$HOME/.local/share/plasma/desktoptheme/$THEME/widgets/panel-background.svgz"

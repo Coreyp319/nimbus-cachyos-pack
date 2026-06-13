@@ -10,6 +10,6 @@ kwriteconfig6 --file kscreenlockerrc \
   --key Image --delete 2>/dev/null || true
 
 echo "2/2 SDDM → stock breeze (removing override; sudo may prompt)…"
-sudo rm -f "$THEME_DIR/theme.conf.user" "$THEME_DIR/bigsur.jpg" /etc/sddm.conf.d/10-whitesur.conf
+sudo rm -f "$THEME_DIR/theme.conf.user" "$THEME_DIR/bigsur.jpg" /etc/sddm.conf.d/10-nimbus.conf
 
 echo "Reverted. Login + lock screens are back to stock Breeze."

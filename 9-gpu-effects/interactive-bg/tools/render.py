@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline renderer for the WhiteSur Aurora shader.
+"""Offline renderer for the Nimbus Aurora shader.
 
 Adapts the Qt6 (Vulkan-dialect, std140 UBO) fragment shader to desktop GL 330
 and renders chosen style/theme/scheme/time combos to PNGs via headless EGL —
@@ -24,7 +24,7 @@ import numpy as np
 import moderngl
 from PIL import Image
 
-FRAG = "/home/corey/whitesur-cachyos-pack/9-gpu-effects/interactive-bg/contents/shaders/aurora.frag"
+FRAG = "/home/corey/nimbus-cachyos-pack/9-gpu-effects/interactive-bg/contents/shaders/aurora.frag"
 OUT  = "/tmp/aurora_shots"
 os.makedirs(OUT, exist_ok=True)
 

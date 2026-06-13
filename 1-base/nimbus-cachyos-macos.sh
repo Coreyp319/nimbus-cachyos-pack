@@ -12,7 +12,7 @@
 #    • One-click light<->dark toggle (Plasma + Qt + GTK + Firefox follow)
 #    • Firefox set to follow the system light/dark theme
 #
-#  USAGE:   bash whitesur-cachyos-macos.sh
+#  USAGE:   bash nimbus-cachyos-macos.sh
 #  Run as your normal user (NOT root). It will call sudo only for packages.
 #  Safe to re-run (idempotent-ish). Log out/in afterward for Meta+Space etc.
 #
@@ -30,7 +30,7 @@ warn(){ printf '   \033[1;33m!\033[0m %s\n' "$*"; }
 [ "$(id -u)" -eq 0 ] && { echo "Do NOT run as root. Run as your normal user."; exit 1; }
 command -v pacman >/dev/null || { echo "This script targets Arch/CachyOS (pacman not found)."; exit 1; }
 [ "${XDG_CURRENT_DESKTOP:-}" = "KDE" ] || warn "XDG_CURRENT_DESKTOP is not KDE — proceeding anyway."
-BUILD="$HOME/.cache/whitesur-setup"; mkdir -p "$BUILD/bin"
+BUILD="$HOME/.cache/nimbus-setup"; mkdir -p "$BUILD/bin"
 GH="https://github.com/vinceliuice"
 
 # ---------------------------------------------------------------------------
@@ -334,7 +334,7 @@ ok "Konsole frosted"
 # ---------------------------------------------------------------------------
 msg "Installing light/dark toggle…"
 mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
-cat > "$HOME/.local/bin/whitesur-theme-toggle.sh" <<'EOF'
+cat > "$HOME/.local/bin/nimbus-theme-toggle.sh" <<'EOF'
 #!/bin/bash
 # WhiteSur whole-desktop light<->dark toggle. Firefox follows via the portal.
 cur=$(kreadconfig6 --file kdeglobals --group General --key ColorScheme)
@@ -349,15 +349,15 @@ else
 fi
 # Prefer the Settings-refine Kvantum fork when installed, so the accent-refined
 # controls survive a light/dark toggle instead of reverting to plain WhiteSur.
-if [ -d "$HOME/.config/Kvantum/WhiteSurRefined" ]; then
-  [ "$MODE" = dark ] && KV=WhiteSurRefinedDark || KV=WhiteSurRefined
+if [ -d "$HOME/.config/Kvantum/NimbusRefined" ]; then
+  [ "$MODE" = dark ] && KV=NimbusRefinedDark || KV=NimbusRefined
 fi
 plasma-apply-colorscheme  "$COLORS" >/dev/null 2>&1
 plasma-apply-desktoptheme "$PTHEME" >/dev/null 2>&1
 # If the Settings-refine layer is installed, it owns the icon theme (a systemd
 # watcher re-tints the refined icons on color-scheme change) — don't fight it.
-if [ -d "$HOME/.local/share/icons/WhiteSur-dark-refined" ] && \
-   systemctl --user is-enabled whitesur-refine-icons.path >/dev/null 2>&1; then
+if [ -d "$HOME/.local/share/icons/Nimbus-dark-refined" ] && \
+   systemctl --user is-enabled nimbus-refine-icons.path >/dev/null 2>&1; then
   :
 else
   kwriteconfig6 --file kdeglobals --group Icons --key Theme "$ICONS"
@@ -383,7 +383,7 @@ qdbus6 org.kde.KWin /KWin reconfigure >/dev/null 2>&1
 # own, so don't overwrite it — only swap the light/dark Big Sur still image when
 # some OTHER wallpaper plugin is active.
 ACTIVE_WP=$(qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript 'print(desktops()[0].wallpaperPlugin)' 2>/dev/null)
-if [ "$ACTIVE_WP" != "com.whitesur.aurora" ]; then
+if [ "$ACTIVE_WP" != "com.nimbus.aurora" ]; then
   if [ "$MODE" = dark ]; then WALLDIR=WhiteSur-dark; else WALLDIR=WhiteSur-light; fi
   WALL=$(ls "$HOME/.local/share/wallpapers/$WALLDIR"/contents/images/*.jpg 2>/dev/null | head -1)
   [ -n "${WALL:-}" ] && plasma-apply-wallpaperimage "$WALL" >/dev/null 2>&1
@@ -397,7 +397,7 @@ notify-send -a Theme "Switched to $MODE mode" "Firefox + Qt live; GTK on next la
 # Keep the dock button state-aware: relabel + re-icon it to the NEXT action, so
 # the pinned launcher always reflects the current mode (the installer writes the
 # initial light-mode state to match). icontasks reads name/icon from this file.
-DESK="$HOME/.local/share/applications/whitesur-theme-toggle.desktop"
+DESK="$HOME/.local/share/applications/nimbus-theme-toggle.desktop"
 if [ "$MODE" = dark ]; then
   NEXTNAME="Switch to Light Mode"; NEXTICON=weather-clear        # sun → go light
 else
@@ -408,28 +408,28 @@ cat > "$DESK" <<DESKTOP
 Type=Application
 Name=$NEXTNAME
 Comment=Switch the whole desktop between WhiteSur light and dark
-Exec=$HOME/.local/bin/whitesur-theme-toggle.sh
+Exec=$HOME/.local/bin/nimbus-theme-toggle.sh
 Icon=$NEXTICON
 Terminal=false
 Categories=Utility;Settings;
 DESKTOP
 kbuildsycoca6 >/dev/null 2>&1
 EOF
-chmod +x "$HOME/.local/bin/whitesur-theme-toggle.sh"
+chmod +x "$HOME/.local/bin/nimbus-theme-toggle.sh"
 # Initial state matches section 5 (applies LIGHT) → next action is "go dark", so
 # the dock button starts as a moon. The toggle script rewrites Name/Icon on every
 # run to stay in sync — keep this mapping identical to the one in that script.
-cat > "$HOME/.local/share/applications/whitesur-theme-toggle.desktop" <<EOF
+cat > "$HOME/.local/share/applications/nimbus-theme-toggle.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Switch to Dark Mode
 Comment=Switch the whole desktop between WhiteSur light and dark
-Exec=$HOME/.local/bin/whitesur-theme-toggle.sh
+Exec=$HOME/.local/bin/nimbus-theme-toggle.sh
 Icon=weather-clear-night
 Terminal=false
 Categories=Utility;Settings;
 EOF
-kwriteconfig6 --file kglobalshortcutsrc --group "whitesur-theme-toggle.desktop" --key "_launch" \
+kwriteconfig6 --file kglobalshortcutsrc --group "nimbus-theme-toggle.desktop" --key "_launch" \
   "Meta+Ctrl+T,none,Toggle Light / Dark Theme"
 kbuildsycoca6 >/dev/null 2>&1
 ok "toggle installed (Meta+Ctrl+T after next login)"
@@ -445,23 +445,23 @@ for d in org.kde.dolphin firefox code org.kde.konsole systemsettings; do
     [ -f "$base/$d.desktop" ] && { PINS+=("applications:$d.desktop"); break; }
   done
 done
-PINS+=("applications:whitesur-theme-toggle.desktop")
+PINS+=("applications:nimbus-theme-toggle.desktop")
 LAUNCHERS=$(IFS=,; echo "${PINS[*]}")
 
 # Ship a tiny custom "Dock Separator" plasmoid — Plasma 6 has no visible
 # separator applet (marginsseparator only adds blank space). It draws a thin,
 # colour-scheme-aware line that fills the panel content height, so it inherits
 # the same top/bottom inset as the icons (from the panel-background margins).
-SEP="$HOME/.local/share/plasma/plasmoids/org.whitesur.dockseparator"
+SEP="$HOME/.local/share/plasma/plasmoids/org.nimbus.dockseparator"
 mkdir -p "$SEP/contents/ui"
 cat > "$SEP/metadata.json" <<'EOF'
 {
     "KPlugin": {
-        "Authors": [{ "Name": "WhiteSur CachyOS Pack" }],
+        "Authors": [{ "Name": "Nimbus CachyOS Pack" }],
         "Category": "Windows and Tasks",
         "Description": "Thin vertical divider line for the mac dock",
         "Icon": "distribute-vertical-x",
-        "Id": "org.whitesur.dockseparator",
+        "Id": "org.nimbus.dockseparator",
         "Name": "Dock Separator",
         "Version": "1.0"
     },
@@ -517,14 +517,14 @@ launcher.writeConfig("appNameFormat",0);
 launcher.writeConfig("showRecentApps",false);
 launcher.writeConfig("showRecentDocs",false);
 launcher.writeConfig("alphaSort",true);
-dock.addWidget("org.whitesur.dockseparator");      // launchpad | apps
+dock.addWidget("org.nimbus.dockseparator");      // launchpad | apps
 var tasks = dock.addWidget("org.kde.plasma.icontasks");
 tasks.currentConfigGroup=["General"];
 tasks.writeConfig("launchers","'"$LAUNCHERS"'");
 tasks.writeConfig("iconSpacing",6);   // more breathing room between dock icons (default 1)
-dock.addWidget("org.whitesur.dockseparator");      // apps | tray
+dock.addWidget("org.nimbus.dockseparator");      // apps | tray
 var tray = dock.addWidget("org.kde.plasma.systemtray");
-dock.addWidget("org.whitesur.dockseparator");      // tray | clock
+dock.addWidget("org.nimbus.dockseparator");      // tray | clock
 var clock = dock.addWidget("org.kde.plasma.digitalclock");
 clock.currentConfigGroup=["Appearance"];
 clock.writeConfig("fontFamily","Inter");   // match the UI font (vs default mono)

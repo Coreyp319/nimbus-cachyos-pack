@@ -1,6 +1,6 @@
-# WhiteSur Aurora — interactive wallpaper
+# Nimbus Aurora — interactive wallpaper
 
-A Plasma 6 wallpaper plugin (`com.whitesur.aurora`) that renders an animated
+A Plasma 6 wallpaper plugin (`com.nimbus.aurora`) that renders an animated
 Big Sur / WhiteSur aurora with a GLSL fragment shader on the QtQuick scene graph.
 Part of Layer 9 (GPU effects). Wayland + Plasma 6.
 
@@ -52,13 +52,13 @@ apply.sh / restore.sh              install+activate / revert (saves prior wallpa
 — window reactivity (v2 bridge) —
 kwin-script/                       KWin/Script package: watches windows, pushes
                                      geometry over D-Bus (sandboxed: no file I/O)
-aurora-bridge.py                   D-Bus daemon org.whitesur.Aurora → state file
-whitesur-aurora-bridge.service     systemd --user unit for the daemon
+aurora-bridge.py                   D-Bus daemon org.nimbus.Aurora → state file
+nimbus-aurora-bridge.service     systemd --user unit for the daemon
 windows-apply.sh / windows-restore.sh   install+enable / disable the bridge
 
 — music reactivity —
 aurora-audio-bridge.py             pw-cat monitor → numpy FFT → audio.json
-whitesur-aurora-audio.service      systemd --user unit for the audio bridge
+nimbus-aurora-audio.service      systemd --user unit for the audio bridge
 audio-apply.sh / audio-restore.sh       install+enable / disable the bridge
 
 — lock screen (opt-in) —
@@ -83,7 +83,7 @@ bash interactive-bg/restore.sh --purge    # …and delete the plugin
 ```
 
 `apply.sh` saves the current wallpaper plugin + image to
-`~/.cache/whitesur-gpu-effects/aurora-prev-wallpaper` so revert is faithful.
+`~/.cache/nimbus-gpu-effects/aurora-prev-wallpaper` so revert is faithful.
 
 ## Window reactivity — the bridge (why it's not just a QML change)
 
@@ -94,15 +94,15 @@ filesystem**. So the data takes three hops:
 
 ```
 KWin script ──D-Bus──► aurora-bridge daemon ──state file──► wallpaper ──► shader
-(live geometry +    (org.whitesur.Aurora;     ($XDG_RUNTIME_DIR/   (polls @30 Hz,
- move velocity;      atomic write — the only   whitesur-aurora/     normalises per
+(live geometry +    (org.nimbus.Aurora;     ($XDG_RUNTIME_DIR/   (polls @30 Hz,
+ move velocity;      atomic write — the only   nimbus-aurora/     normalises per
  throttled ~30 Hz)   hop allowed to touch fs)  windows.json)        screen, smooths)
 ```
 
 - **`kwin-script/`** — connects `interactiveMoveResizeStepped/Finished`,
   `frameGeometryChanged`, `windowAdded/Removed/Activated`; sends up to 6 window
   rects + the moving one's velocity (global px) via `callDBus`, throttled to ~33 ms.
-- **`aurora-bridge.py`** — owns `org.whitesur.Aurora`, `UpdateWindows(s)` writes the
+- **`aurora-bridge.py`** — owns `org.nimbus.Aurora`, `UpdateWindows(s)` writes the
   JSON atomically (`mkstemp` + `os.replace`) so the wallpaper never reads a torn file.
 - **`main.qml`** — a `Timer` polls the file (XHR `file://`, with an exec-`cat`
   fallback), maps global px → this screen's 0..1 via the `Screen` attached props

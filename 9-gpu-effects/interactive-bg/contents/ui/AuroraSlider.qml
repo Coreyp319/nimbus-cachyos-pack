@@ -1,5 +1,5 @@
 /*
- * AuroraSlider — an expressive QQC2.Slider for the WhiteSur Aurora config UI.
+ * AuroraSlider — an expressive QQC2.Slider for the Nimbus Aurora config UI.
  *
  * The wallpaper itself (main.qml) animates everything with Behavior +
  * NumberAnimation (OutCubic 350–700ms, OutQuad audio bands); the stock config

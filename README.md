@@ -1,4 +1,4 @@
-# WhiteSur CachyOS pack — macOS-style desktop + OS customization
+# Nimbus CachyOS pack — macOS-style desktop + OS customization
 
 A personal **CachyOS + KDE Plasma 6 (Wayland)** customization. Layers 1–4 turn a
 stock install into a cohesive macOS-style desktop; Layers 5–6 add general system
@@ -50,7 +50,7 @@ to the active text color on every light↔dark switch (~400 ms) **and re-emits t
 icon-changed signal** so the running taskbar/tray follow live, and flips the
 theme's inherit order so non-overridden icons track the scheme (light-first in
 light mode) instead of washing out. Also ships an optional **Kvantum whitespace
-fork** (`WhiteSurRefined` + `WhiteSurRefinedDark`, not auto-selected) that adds
+fork** (`NimbusRefined` + `NimbusRefinedDark`, not auto-selected) that adds
 breathing room in classic Qt dialogs; if enabled, the watcher rides it light↔dark
 too. Fully reversible: `2-settings-refine/revert.sh`.
 
@@ -186,7 +186,7 @@ scene graph; this layer just changes *which* shaders run). Three opt-in items:
   point releases). The visible shader pass stays **off** until you bind a toggle key
   (*Shortcuts → KWin → Toggle Shaders*); pick/tune shaders in
   `~/.local/share/kwin-effect-shaders_shaders/1_settings.glsl`.
-- **Interactive aurora wallpaper** (`com.whitesur.aurora`, in `interactive-bg/`) — a custom
+- **Interactive aurora wallpaper** (`com.nimbus.aurora`, in `interactive-bg/`) — a custom
   Plasma 6 wallpaper plugin: an animated Big Sur gradient drawn by a GLSL fragment shader
   on the QtQuick scene graph. **Cursor-reactive** (a warm light blooms under the pointer,
   clicks pass through), **light/dark-aware** (follows the dock theme toggle automatically),
@@ -228,13 +228,13 @@ bash revert.sh --purge   # also deletes the installed overlay files
 ## Layout
 ```
 install.sh  revert.sh  README.md
-1-base/            whitesur-cachyos-macos.sh
+1-base/            nimbus-cachyos-macos.sh
 2-settings-refine/ install.sh revert.sh icons/ kvantum/ systemd/ bin/
 3-krunner-finder/  install.sh revert.sh row-tweak/ claude-runner/
 4-login-lock/      install.sh revert.sh
 5-system-qol/      install.sh revert.sh fish/
 6-local-ai/        install.sh revert.sh Modelfile.hermes4-14b Modelfile.hermes4.3-36b
 7-notifications/   install.sh revert.sh config.json style-{light,dark}.css bin/ systemd/ dbus/ demo/
-8-dolphin-quicklook/ install.sh revert.sh whitesur-quicklook.desktop dolphinui.rc PKGBUILD
+8-dolphin-quicklook/ install.sh revert.sh nimbus-quicklook.desktop dolphinui.rc PKGBUILD
 9-gpu-effects/     install.sh revert.sh
 ```

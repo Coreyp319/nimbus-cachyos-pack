@@ -179,7 +179,7 @@ KDE-Rounded-Corners source) rather than from scratch. Reference:
 https://discuss.kde.org/t/help-with-custom-qsb-shaders-in-kwin-plasma-6-wayland/39830
 
 ### Interactive aurora wallpaper (custom GLSL wallpaper plugin)
-Layer 9 also ships a custom **Plasma 6 wallpaper plugin** `com.whitesur.aurora`
+Layer 9 also ships a custom **Plasma 6 wallpaper plugin** `com.nimbus.aurora`
 (`9-gpu-effects/interactive-bg/`) — an animated, cursor-reactive, light/dark-aware
 GLSL aurora drawn by a `ShaderEffect` on the QtQuick scene graph (NOT a KWin effect).
 This is the easiest path to a *full-screen custom shader background* without touching
@@ -239,7 +239,7 @@ Decide which the user is actually asking for before you touch anything:
   system tweak goes through an install/revert pair. Only then, mirror the change into
   the owning layer so it survives a reinstall and stays undoable —
   `9-gpu-effects/{install,revert}.sh` for the GPU effects, or
-  `1-base/whitesur-cachyos-macos.sh` for the stock-blur default.
+  `1-base/nimbus-cachyos-macos.sh` for the stock-blur default.
 
 When it's ambiguous, treat it as **ephemeral** (live only) and tell the user the
 one-line command to persist it if they want it to stick.

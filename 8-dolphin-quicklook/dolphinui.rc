@@ -138,7 +138,7 @@
         <Action priority="0" name="edit_paste"/>
         <Action priority="0" name="toggle_search"/>
         <Action priority="0" name="toggle_filter"/>
-        <Action name="servicemenu_whitesur-quicklook.desktop::quickLook" shortcut="Space"/>
+        <Action name="servicemenu_nimbus-quicklook.desktop::quickLook" shortcut="Space"/>
         <Action name="toggle_selection_mode" shortcut="none"/>
     </ActionProperties>
 </gui>

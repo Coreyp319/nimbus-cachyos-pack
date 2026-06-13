@@ -6,8 +6,8 @@
 # watcher that calls it cannot loop).
 set -eu
 BZ=/usr/share/icons/breeze-dark
-DST="$HOME/.local/share/icons/WhiteSur-dark-refined"
-THEME_NAME="WhiteSur-dark-refined"
+DST="$HOME/.local/share/icons/Nimbus-dark-refined"
+THEME_NAME="Nimbus-dark-refined"
 MARK="$DST/.baked-tone"
 
 # --- LIVE window text color -> hex tone ---
@@ -31,10 +31,10 @@ r=${rgb%%,*}; b=${rgb##*,}; sum=$(( r + b ))
 # icons across the desktop track the active scheme (and don't wash out in light
 # mode by falling through to the dark glyph set).
 if [ "$sum" -lt 320 ]; then
-  KV_TARGET="WhiteSurRefined"
+  KV_TARGET="NimbusRefined"
   INHERITS="WhiteSur-light,WhiteSur-dark,breeze,hicolor"
 else
-  KV_TARGET="WhiteSurRefinedDark"
+  KV_TARGET="NimbusRefinedDark"
   INHERITS="WhiteSur-dark,WhiteSur-light,breeze-dark,hicolor"
 fi
 KV_FILE="$HOME/.config/Kvantum/kvantum.kvconfig"
@@ -53,7 +53,7 @@ fi
 rm -rf "$DST"; mkdir -p "$DST/apps/scalable"
 cat > "$DST/index.theme" <<EOF
 [Icon Theme]
-Name=WhiteSur Dark Refined
+Name=Nimbus Dark Refined
 Comment=WhiteSur with uniform monochrome System Settings section icons (tone tracks active scheme)
 Inherits=$INHERITS
 Directories=apps/scalable
@@ -106,7 +106,7 @@ printf '%s' "$HEX" > "$MARK"
 gtk-update-icon-cache -q -f "$DST" 2>/dev/null || true
 
 # Re-assert + NOTIFY. The theme NAME never changes across light<->dark (it stays
-# WhiteSur-dark-refined), so KDE gets no IconChanged signal on its own and the
+# Nimbus-dark-refined), so KDE gets no IconChanged signal on its own and the
 # taskbar/dock keep stale cached pixmaps from the old inherited set. plasma-changeicons
 # both writes Icons/Theme and emits IconChanged, forcing running apps to re-resolve.
 # It rewrites kdeglobals (re-firing this path unit once) but the fast-path above then

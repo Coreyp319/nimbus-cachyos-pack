@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  WhiteSur CachyOS Pack — master installer
+#  Nimbus CachyOS Pack — master installer
 #  Five independent layers, each opt-in:
 #    1) Base mac desktop   — WhiteSur theme, dock, fonts, blur, animations,
 #                            Spotlight, light/dark toggle, Firefox-follows-system
@@ -29,7 +29,7 @@ esac
 cat <<'NOTICE'
 
   ┌──────────────────────────────────────────────────────────────────────┐
-  │   WhiteSur macOS-style desktop pack — CachyOS / KDE Plasma 6 (Wayland) │
+  │   Nimbus macOS-style desktop pack — CachyOS / KDE Plasma 6 (Wayland) │
   └──────────────────────────────────────────────────────────────────────┘
 
   NINE LAYERS (pick any):
@@ -75,7 +75,7 @@ ask(){ [ "$ALL" = 1 ] && return 0; printf '  Install %s? [Y/n] ' "$1"
        read -r r </dev/tty 2>/dev/null || r=n; case "$r" in [nN]*) return 1 ;; *) return 0 ;; esac; }
 
 if ask "LAYER 1 — base mac desktop"; then
-  bash "$HERE/1-base/whitesur-cachyos-macos.sh" -y || echo "  (layer 1 reported issues — see above)"
+  bash "$HERE/1-base/nimbus-cachyos-macos.sh" -y || echo "  (layer 1 reported issues — see above)"
 fi
 if ask "LAYER 2 — System Settings refined icons"; then
   bash "$HERE/2-settings-refine/install.sh" || echo "  (layer 2 reported issues — see above)"

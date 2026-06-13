@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Test suite for the WhiteSur CachyOS pack.
+# Test suite for the Nimbus CachyOS pack.
 #
 # Static + real-engine checks over the whole repo. Designed to run anywhere:
 # each check degrades to SKIP if its tool is missing (so CI without PyQt6/Qt
