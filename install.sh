@@ -32,7 +32,7 @@ cat <<'NOTICE'
   │   Nimbus macOS-style desktop pack — CachyOS / KDE Plasma 6 (Wayland) │
   └──────────────────────────────────────────────────────────────────────┘
 
-  NINE LAYERS (pick any):
+  TEN LAYERS (pick any):
     1) Base mac desktop  — the full WhiteSur transformation. REPLACES your
        panel/dock, restarts plasmashell, sets Firefox to follow system theme.
     2) Settings refine   — uniform monochrome icons for System Settings
@@ -63,6 +63,11 @@ cat <<'NOTICE'
        (ReShade-style desktop post-process: CAS sharpening, deband, tonemap —
        built from source). The shader pass stays OFF until you bind a toggle key.
        Fully reversible.
+   10) Nimbus Flux        — standalone GPU compute-shader fluid engine (Rust /
+       bevy / wgpu): a real Eulerian fluid (ink / mercury / water) you launch as
+       an app, drag to push, react to with 1/2/3 + D. Needs the Rust toolchain;
+       builds a release binary + adds an app-menu launcher. Separate from the
+       desktop — the wallpaper's own "Liquid" style is the integrated version.
 
   REQUIREMENTS:  Arch/CachyOS · KDE Plasma 6 · Wayland · run as normal user.
   REVERSIBLE:    ./revert.sh  (undoes every layer; --purge also deletes files).
@@ -100,6 +105,9 @@ if ask "LAYER 8 — Dolphin Quick Look (Space → preview)"; then
 fi
 if ask "LAYER 9 — GPU UI effects (Glass blur + desktop shaders)"; then
   bash "$HERE/9-gpu-effects/install.sh" $([ "$ALL" = 1 ] && echo -y) || echo "  (layer 9 reported issues — see above)"
+fi
+if ask "LAYER 10 — Nimbus Flux GPU fluid engine (standalone bevy showpiece; needs Rust)"; then
+  bash "$HERE/10-shader-engine/install.sh" $([ "$ALL" = 1 ] && echo -y) || echo "  (layer 10 reported issues — see above)"
 fi
 
 echo; echo ":: Settling Plasma…"

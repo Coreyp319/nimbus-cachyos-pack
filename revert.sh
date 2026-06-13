@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# Master revert — undoes all nine layers. Pass --purge to also delete installed files.
+# Master revert — undoes all ten layers. Pass --purge to also delete installed files.
 #   Layers 2–9 revert cleanly below. Layer 1 (base) now scripts its self-contained
 #   user-level bits (toggle, keybind, dock separator, dock-margin SVG); the Global-
 #   Theme reset + panel removal remain manual (they depend on your replacement).
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PURGE="${1:-}"
+
+echo "── Layer 10: Nimbus Flux GPU fluid engine ──"
+bash "$HERE/10-shader-engine/revert.sh" "$PURGE" || true
 
 echo "── Layer 9: GPU UI effects ──"
 bash "$HERE/9-gpu-effects/revert.sh" "$PURGE" || true
