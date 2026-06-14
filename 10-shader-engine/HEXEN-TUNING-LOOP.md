@@ -14,7 +14,7 @@ the model edits *validated data, never code*. Built as a **3-knob spike** (prove
 | Piece | What it does |
 |---|---|
 | `scene_hexen.rs::HexenTuning` | Deserializes `NIMBUS_FLUX_HEXEN_TUNING` (a JSON path) at `setup()`. **Missing/invalid → the hardcoded defaults.** Every field is **clamp-bounded on load** — the renderer never trusts the file. Only **raster/shared** values are externalized; the `if rt {…}` lighting stays the DLSS session's. |
-| `hexen-tune.py` | Guardrail manager: `set` (clamp+stage) · `capture` (run binary + **retry** on swapchain contention, save frame) · `accept` (promote tuning→last-good + capture→baseline + **ledger**) · `revert` (restore last-good) · `show`/`ledger`/`knobs`. |
+| `hexen-tune.py` | Guardrail manager: `set` (clamp+stage) · `capture` (run binary **headless/offscreen** — no window/swapchain, save frame) · `accept` (promote tuning→last-good + capture→baseline + **ledger**) · `revert` (restore last-good) · `show`/`ledger`/`knobs`. |
 | `hexen-vision-judge.py` | The **look** step: hands BEFORE+AFTER frames + the rubric to a local Ollama vision model, returns a strict `{better,reason,artifacts,confidence}` verdict. Exit 0 = keep, 10 = revert. **Default model `qwen3.6-27b-64k` (discriminates); NOT gemma4-64k (rubber-stamps)** — see below. |
 | `hexen-autotune.py` | The **autonomous driver**: PROPOSE (vision model picks one knob from `baseline.png`) → set → capture → JUDGE → accept\|revert → ledger, looping N times. Separate `--model` (proposer) and `--judge-model` (the integrity-critical one). |
 | `~/.nimbus/hexen-tune/` | State: `tuning.json` (live knobs the scene reads), `last-good.json` (revert target), `baseline.png` (comparison anchor), `captures/`, `ledger.jsonl`. Not in the repo — machine state, like `~/.hermes/ui-audit/`. |
@@ -85,16 +85,17 @@ vision-form of the Hermes-confabulation lesson (`ui-audit-toolkit`, `verify-effe
 A text-only model (Hermes) can drive the *parameter search* but still needs a discriminating
 vision model (or a human) for the look.
 
-### ⚠️ Capture reliability under the live RT wallpaper
-The windowed capture competes with the live **RT hexen wallpaper** for the NVIDIA swapchain;
-under contention bevy panics `Couldn't get swap chain texture … timeout` (the known
-NVIDIA+Wayland caveat). It's intermittent — `capture` retries (`--retries`, default 3) and
-usually recovers, but a hard wedge can fail every attempt (the loop then safely *reverts*,
-losing only that iteration). GPU util/VRAM were NOT the limit (39% / 5 GB) and a trivial
-`vkcube` window presented fine — the heavy capture just loses the race. Robust fixes, in
-order: **(a)** run the loop when hexen is **not** the active live wallpaper (captures were
-reliable then); **(b)** add an **offscreen/headless** render path (no swapchain) — the right
-architecture for an unattended nightly loop, and the clean long-term fix.
+### Capture is headless/offscreen (swapchain contention SOLVED)
+`capture` renders the scene to an **offscreen image** (`main.rs`: `NIMBUS_FLUX_CAPTURE=1`
+&& not wallpaper → a render-target `Image`, the camera redirected to it, `Screenshot::image`
++ `save_to_disk`) — **no window, no compositor surface, no swapchain**. This sidesteps the
+old failure where a windowed capture raced the live **RT hexen wallpaper** for the NVIDIA
+swapchain and panicked `Couldn't get swap chain texture … timeout` (verified: windowed = 0/5
+under the live wallpaper; headless = 5/5). Two implementation notes that bit during the build:
+a windowless bevy app must drop `WinitPlugin` and run under `ScheduleRunnerPlugin` (winit
+won't pump the update loop with no window → the app hangs at startup); and the target image
+needs `COPY_SRC` added (`new_target_texture` only sets `RENDER_ATTACHMENT|TEXTURE_BINDING|
+COPY_DST`). `--retries` stays as cheap insurance against a transient GPU-init hiccup.
 
 **Guardrails (non-negotiable):** clamp every knob (enforced twice — script + renderer);
 **one knob per iteration** (the judge must be able to attribute the change); **always
@@ -123,8 +124,11 @@ never surprises the live desktop or the DLSS session.
   worse frame); `qwen3.6-27b-64k` discriminates (both directions + caught a real regression)
   → made the default judge. The gemma-rubber-stamped `wall_depth`/`fog` accepts were
   re-judged by qwen and **reverted**; live tuning reset to the verified anchor `moonlight=1150`.
-- **Open:** capture is intermittently wedged by the live RT wallpaper (retries help, not a
-  cure) — offscreen render is the clean fix. Rust externalization (now 8 knobs) is
-  applied/built **on disk, uncommitted** — `scene_hexen.rs` is the DLSS session's untracked
-  file; commit it together with their next sync. The accepted tuning is still inert on the
-  live wallpaper until the launcher exports `NIMBUS_FLUX_HEXEN_TUNING` (the go-live step).
+- 2026-06-14 (headless capture): `main.rs` now renders captures **offscreen** (no window/
+  swapchain) under `ScheduleRunnerPlugin` → the live-RT-wallpaper contention is gone
+  (windowed 0/5 → headless 5/5). Capstone run: gemma proposed more fog, **qwen judged it
+  WORSE and the loop reverted** — reliable capture + discriminating judge, end-to-end.
+- **Open:** the `HexenTuning` Rust (8 knobs, in the DLSS session's untracked `scene_hexen.rs`)
+  is built/verified **on disk but uncommitted** — commit it in their next sync. The accepted
+  tuning is still inert on the live wallpaper until the launcher exports
+  `NIMBUS_FLUX_HEXEN_TUNING` (the go-live step). `main.rs` headless support IS committed.

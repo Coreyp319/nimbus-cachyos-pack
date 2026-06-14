@@ -97,12 +97,31 @@ struct HexenTuning {
     wall_depth: f32,
     /// cool moonlight key `illuminance` (raster path only) — warm/cool contrast = depth.
     moonlight: f32,
+    /// floor `perceptual_roughness` — lower = wetter flagstone glint.
+    floor_roughness: f32,
+    /// floor parallax `depth` — flagstone relief.
+    floor_depth: f32,
+    /// `AmbientLight.brightness` (raster fill; Solari ignores flat ambient) — lower = deeper shadows.
+    ambient: f32,
+    /// `DistanceFog` exponential density — far-fade depth vs. detail wash.
+    fog_density: f32,
+    /// `FogVolume.density_factor` — god-ray haze vs. curtaining.
+    fogvolume_density: f32,
 }
 
 impl Default for HexenTuning {
     /// The values that were hardcoded before externalization (the last-good baseline).
     fn default() -> Self {
-        Self { wall_roughness: 0.7, wall_depth: 0.045, moonlight: 850.0 }
+        Self {
+            wall_roughness: 0.7,
+            wall_depth: 0.045,
+            moonlight: 850.0,
+            floor_roughness: 0.45,
+            floor_depth: 0.03,
+            ambient: 42.0,
+            fog_density: 0.007,
+            fogvolume_density: 0.028,
+        }
     }
 }
 
@@ -126,9 +145,16 @@ impl HexenTuning {
         t.wall_roughness = num("wall_roughness", t.wall_roughness).clamp(0.5, 0.95);
         t.wall_depth = num("wall_depth", t.wall_depth).clamp(0.0, 0.06);
         t.moonlight = num("moonlight", t.moonlight).clamp(400.0, 1400.0);
+        t.floor_roughness = num("floor_roughness", t.floor_roughness).clamp(0.35, 0.7);
+        t.floor_depth = num("floor_depth", t.floor_depth).clamp(0.0, 0.05);
+        t.ambient = num("ambient", t.ambient).clamp(25.0, 80.0);
+        t.fog_density = num("fog_density", t.fog_density).clamp(0.004, 0.012);
+        t.fogvolume_density = num("fogvolume_density", t.fogvolume_density).clamp(0.015, 0.05);
         info!(
-            "hexen tuning loaded from '{path}': wall_roughness={} wall_depth={} moonlight={}",
-            t.wall_roughness, t.wall_depth, t.moonlight
+            "hexen tuning loaded from '{path}': wall_roughness={} wall_depth={} moonlight={} \
+             floor_roughness={} floor_depth={} ambient={} fog_density={} fogvolume_density={}",
+            t.wall_roughness, t.wall_depth, t.moonlight, t.floor_roughness, t.floor_depth,
+            t.ambient, t.fog_density, t.fogvolume_density
         );
         t
     }
@@ -159,7 +185,7 @@ fn setup(
         Msaa::Off, // required by both SSAO and Solari
         AmbientLight {
             color: Color::srgb(0.42, 0.52, 0.85), // cold moonlight bounce
-            brightness: 42.0, // dimmer fill → torches model real form, shadows stay deep
+            brightness: tuning.ambient, // dimmer fill → torches model real form, shadows stay deep
             ..default()
         },
         // ray-marched volumetric haze + torch god-rays — atmosphere in both paths.
@@ -173,7 +199,7 @@ fn setup(
             color: Color::srgb(0.020, 0.016, 0.013),
             directional_light_color: Color::srgb(0.9, 0.55, 0.25),
             directional_light_exponent: 18.0,
-            falloff: FogFalloff::Exponential { density: 0.007 }, // eased: don't curtain detail
+            falloff: FogFalloff::Exponential { density: tuning.fog_density }, // eased: don't curtain detail
         },
         Transform::from_xyz(0.0, 1.7, HALF_LEN - 5.0)
             .looking_at(Vec3::new(0.0, 1.6, BUST_Z), Vec3::Y),
@@ -202,7 +228,7 @@ fn setup(
     commands.spawn((
         FogVolume {
             fog_color: Color::srgb(0.62, 0.40, 0.22),
-            density_factor: 0.028, // thin: scatters torch shafts, doesn't curtain the hall
+            density_factor: tuning.fogvolume_density, // thin: scatters torch shafts, doesn't curtain the hall
             scattering: 0.6,
             ..default()
         },
@@ -239,7 +265,7 @@ fn setup(
     // on the big planes (a tile is metres wide); on `trim` — columns/ribs/pedestals clad in
     // a single stretched tile — any parallax smears badly, so it's disabled there (0.0) and
     // those surfaces rely on the normal map alone.
-    let floor_mat = stone_material(&mut materials, &assets, "medieval_blocks_02", Vec2::new(HALL_W / 2.0, HALL_LEN / 2.0), 0.45, 0.03);
+    let floor_mat = stone_material(&mut materials, &assets, "medieval_blocks_02", Vec2::new(HALL_W / 2.0, HALL_LEN / 2.0), tuning.floor_roughness, tuning.floor_depth);
     let ceil_mat = stone_material(&mut materials, &assets, "castle_wall_slates", Vec2::new(HALL_W / 3.0, HALL_LEN / 3.0), 0.85, 0.025);
     let wall_mat = stone_material(&mut materials, &assets, "castle_brick_07", Vec2::new(HALL_LEN / 1.7, HALL_H / 1.7), tuning.wall_roughness, tuning.wall_depth);
     let trim_mat = stone_material(&mut materials, &assets, "castle_wall_slates", Vec2::new(1.0, 2.0), 0.8, 0.0);

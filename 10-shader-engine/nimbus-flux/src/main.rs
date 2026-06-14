@@ -17,8 +17,10 @@ mod scene_journey;
 mod window_react;
 
 use bevy::{
-    diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
+    camera::RenderTarget,
+    diagnostic::FrameTimeDiagnosticsPlugin,
     prelude::*,
+    render::render_resource::{TextureFormat, TextureUsages},
     render::view::screenshot::{save_to_disk, Screenshot},
     window::PresentMode,
 };
@@ -33,6 +35,11 @@ fn main() {
     // surface (via bevy_live_wallpaper) instead of a normal window — the scene becomes
     // a live, cursor-reactive desktop wallpaper.
     let wallpaper = std::env::var("NIMBUS_FLUX_WALLPAPER").is_ok();
+    // Capture renders OFFSCREEN to an image (no window, no swapchain) when not a wallpaper —
+    // the tuning-loop screenshot path. A windowed capture races the live RT wallpaper for the
+    // NVIDIA swapchain and intermittently panics ("Couldn't get swap chain texture ...
+    // timeout"); rendering to an image sidesteps the compositor entirely.
+    let headless_capture = capture && !wallpaper;
     // Explicit NIMBUS_FLUX_SCENE wins; wallpaper mode defaults to the gothic "hexen"
     // dungeon (cyberpunk stays reachable via NIMBUS_FLUX_SCENE=cyberpunk).
     let scene = std::env::var("NIMBUS_FLUX_SCENE")
@@ -50,9 +57,10 @@ fn main() {
             None => wallpaper && scene == "hexen", // hexen wallpaper RT; journey raster
         };
 
-    // In wallpaper mode there is no primary window — the layer-shell surface is owned
-    // by LiveWallpaperPlugin, and the app must not exit when "no window" closes.
-    let window_plugin = if wallpaper {
+    // No primary window in wallpaper mode (the layer-shell surface is owned by
+    // LiveWallpaperPlugin) nor in headless capture (we render to an image) — and the app
+    // must not exit when "no window" closes.
+    let window_plugin = if wallpaper || headless_capture {
         WindowPlugin {
             primary_window: None,
             exit_condition: bevy::window::ExitCondition::DontExit,
@@ -81,8 +89,19 @@ fn main() {
     app.insert_resource(bevy::anti_alias::dlss::DlssProjectId(bevy::asset::uuid::uuid!(
         "b9e2f1a4-3c5d-4e7f-8a1b-2c3d4e5f6a7b"
     )));
-    app.add_plugins(DefaultPlugins.set(window_plugin).set(ImagePlugin::default_linear()))
-        .add_plugins(FrameTimeDiagnosticsPlugin::default());
+    let default_plugins = DefaultPlugins.set(window_plugin).set(ImagePlugin::default_linear());
+    if headless_capture {
+        // With no window, winit never pumps the update loop (the app hangs at startup), so
+        // run TRULY headless: drop WinitPlugin and drive the schedule with ScheduleRunnerPlugin.
+        // The GPU still renders offscreen to the target image; nothing touches a surface.
+        app.add_plugins(default_plugins.build().disable::<bevy::winit::WinitPlugin>())
+            .add_plugins(bevy::app::ScheduleRunnerPlugin::run_loop(
+                std::time::Duration::from_secs_f64(1.0 / 60.0),
+            ));
+    } else {
+        app.add_plugins(default_plugins);
+    }
+    app.add_plugins(FrameTimeDiagnosticsPlugin::default());
 
     // Ray-traced lighting: SolariPlugins must be added early (it requests the
     // ray-tracing wgpu features before the render device is created).
@@ -114,36 +133,89 @@ fn main() {
         }
     }
 
-    // Capture mode needs a primary window to screenshot; no-op in wallpaper mode.
-    if capture && !wallpaper {
-        app.add_systems(Update, capture_and_exit);
+    // Headless capture: render the scene to an offscreen image and screenshot THAT, so the
+    // tuning loop never opens a window or touches the compositor swapchain (the app runs
+    // under ScheduleRunnerPlugin, set up above, since there's no winit to pump it).
+    if headless_capture {
+        app.insert_resource(HeadlessCapture {
+            width: SIM.x,
+            height: SIM.y,
+            path: std::env::var("NIMBUS_FLUX_CAPTURE_PATH")
+                .unwrap_or_else(|_| "/tmp/nimbus-flux-frame.png".into()),
+        });
+        app.add_systems(Startup, setup_headless_target);
+        app.add_systems(Update, (redirect_camera_to_target, headless_screenshot_and_exit));
     }
 
     app.run();
 }
 
-/// Capture-mode lifecycle: snapshot a frame, log FPS, exit. Gated on the env var.
-fn capture_and_exit(
+/// Offscreen capture config: the render-target size + where to write the PNG.
+#[derive(Resource)]
+struct HeadlessCapture {
+    width: u32,
+    height: u32,
+    path: String,
+}
+
+/// Handle of the image the scene camera is redirected to render into.
+#[derive(Resource)]
+struct HeadlessTarget(Handle<Image>);
+
+/// Create the offscreen render-target image (RGBA8 sRGB; +COPY_SRC so the screenshot can
+/// read it back). `new_target_texture` sets RENDER_ATTACHMENT|TEXTURE_BINDING|COPY_DST.
+fn setup_headless_target(
+    mut commands: Commands,
+    mut images: ResMut<Assets<Image>>,
+    cfg: Res<HeadlessCapture>,
+) {
+    let mut image = Image::new_target_texture(cfg.width, cfg.height, TextureFormat::Rgba8UnormSrgb, None);
+    image.texture_descriptor.usage |= TextureUsages::COPY_SRC;
+    commands.insert_resource(HeadlessTarget(images.add(image)));
+}
+
+/// Point the scene's camera at the offscreen image instead of a window. Runs every frame
+/// until a camera exists (so it's independent of Startup ordering), then idles.
+fn redirect_camera_to_target(
+    target: Option<Res<HeadlessTarget>>,
+    mut targets: Query<&mut RenderTarget, With<Camera>>,
+    mut done: Local<bool>,
+) {
+    if *done {
+        return;
+    }
+    let Some(target) = target else { return };
+    let mut redirected = false;
+    for mut render_target in &mut targets {
+        *render_target = target.0.clone().into();
+        redirected = true;
+    }
+    if redirected {
+        *done = true;
+    }
+}
+
+/// Snapshot the offscreen image ~4s in (after props/textures have streamed in), then exit —
+/// mirrors the old windowed capture's timing.
+fn headless_screenshot_and_exit(
     time: Res<Time>,
-    diagnostics: Res<DiagnosticsStore>,
+    cfg: Res<HeadlessCapture>,
+    target: Option<Res<HeadlessTarget>>,
     mut commands: Commands,
     mut state: Local<u8>,
 ) {
     let t = time.elapsed_secs();
     if *state == 0 && t > 4.0 {
-        commands
-            .spawn(Screenshot::primary_window())
-            .observe(save_to_disk("/tmp/nimbus-flux-frame.png"));
-        *state = 1;
+        if let Some(target) = target {
+            commands
+                .spawn(Screenshot::image(target.0.clone()))
+                .observe(save_to_disk(cfg.path.clone()));
+            *state = 1;
+        }
     }
     if *state == 1 && t > 6.0 {
-        if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
-            if let Some(avg) = fps.average() {
-                info!("NIMBUS_FLUX_FPS avg={avg:.1}");
-            }
-        }
-        // Capture mode is a one-shot check; the snapshot was saved ~2s ago and is
-        // flushed by now, so a hard exit is safe and avoids the event-writer API.
+        // One-shot: the snapshot was saved ~2s ago and is flushed by now, so a hard exit is
+        // safe and avoids the event-writer API.
         std::process::exit(0);
     }
 }

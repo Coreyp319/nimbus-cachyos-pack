@@ -220,11 +220,9 @@ def cmd_capture(args) -> int:
 
     print(f"capture: {binary.name} (mtime {datetime.fromtimestamp(binary.stat().st_mtime)}) "
           f"cam={cam} tuning={fmt(current())}")
-    # The windowed capture competes with the live RT wallpaper for the NVIDIA swapchain;
-    # under contention bevy panics with "Couldn't get swap chain texture ... timeout". It's
-    # often intermittent, so retry a few times with a short settle. A HARD wedge (every
-    # attempt times out) means the live RT hexen wallpaper is saturating the GPU — render
-    # offscreen, or run the loop when hexen isn't the active wallpaper (see HEXEN-TUNING-LOOP.md).
+    # The binary renders this capture HEADLESS (offscreen image, no window/swapchain — see
+    # main.rs), which sidesteps the live-RT-wallpaper swapchain contention that used to wedge
+    # a windowed capture. Retries stay as cheap insurance against a transient GPU-init hiccup.
     p = None
     for attempt in range(1, args.retries + 1):
         FRAME.unlink(missing_ok=True)
