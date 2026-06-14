@@ -291,6 +291,50 @@ disarms the light/dark watcher; `--purge` resets the pack-owned Flatpak override
   no warranty** — skim the scripts before trusting them.
 - Test on a spare machine / VM before sharing widely.
 
+## FAQ
+
+**Do I have to install all of it?**
+No — the layers are independent. Pick a subset interactively (`bash install.sh`,
+Y/n per layer) or by number (`./nimbus install 2 7 8`). Try a couple of low-risk
+layers before the full **Layer 1** desktop transformation — it replaces your
+panel/dock and restarts the shell.
+
+**Is it reversible?**
+Yes — every layer ships an install/revert pair. `bash revert.sh` undoes the
+standing changes; add `--purge` to also delete the installed overlay files.
+Revert a single layer with `./nimbus revert <N>` (e.g. `./nimbus revert 9 --purge`).
+Layer 1 prints its manual undo steps.
+
+**I installed a layer but nothing changed.**
+**Log out and back in.** Wayland binds the global shortcuts (`Meta+Space`,
+`Meta+Ctrl+T`) and reloads the shell/effects only at login. The blur forks in
+particular won't show until you relogin — or toggle the effect off/on under
+System Settings → Desktop Effects.
+
+**Does it run on X11 / GNOME / Ubuntu / …?**
+No. It targets **Arch-family (`pacman`) + KDE Plasma 6 on Wayland** only — the
+effects and shaders need Wayland. Run `./nimbus preflight` to check first.
+
+**WhiteSur or Nimbus — which is it?**
+Both. The pack builds **on top of** the upstream
+[WhiteSur](https://github.com/vinceliuice) theme suite (kept as-is) and layers
+its own **Nimbus** artifacts over it — the aurora wallpaper, the refined Kvantum
+fork, the Launchpad, and so on.
+
+**How do I switch light/dark?**
+`Meta+Ctrl+T` — Layer 1's theme toggle re-themes the desktop together with the
+scheme-synced layers (notifications, the aurora wallpaper).
+
+**Does the local AI (Layer 6) phone home?**
+No. It's a fully local, on-GPU Ollama stack (Hermes / Gemma / Qwen) — nothing in
+the pack sends your data to a third-party service.
+
+**Is it safe to run?**
+It runs as your **normal user** (sudo only for packages and a few system files,
+all noted up front) and is **provided as-is, no warranty** — skim the scripts
+before trusting them, and test on a spare machine or VM first. `./nimbus status`
+(or `./nimbus doctor`) reports per-layer health afterward.
+
 ## Reverting everything
 ```bash
 bash revert.sh           # layers 2–11 fully; layer 1 prints manual steps
