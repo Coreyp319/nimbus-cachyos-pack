@@ -18,12 +18,26 @@ hdr(){ printf '\n\033[1m== %s ==\033[0m\n' "$1"; }
 
 files(){ git ls-files "$1"; }   # tracked files only — ignores build junk
 
+# Shell scripts to syntax-check: every *.sh PLUS extensionless scripts carrying a
+# bash/sh shebang (e.g. the layer helpers in bin/ — refine-icons,
+# nimbus-quicklook-ensure). Without this, a broken extensionless helper passes
+# the suite silently. fish-shebang scripts are excluded (bash -n can't parse them).
+shell_files(){
+  { files '*.sh'
+    while IFS= read -r f; do
+      case "$f" in *.sh) continue ;; esac
+      [ -f "$f" ] || continue
+      head -1 "$f" 2>/dev/null | grep -Eq '^#!.*\b(bash|sh)\b' && printf '%s\n' "$f"
+    done < <(files '*')
+  } | sort -u
+}
+
 # 1. Shell scripts parse ----------------------------------------------------
 hdr "Shell syntax (bash -n)"
 while IFS= read -r f; do
   [ -n "$f" ] || continue
   if bash -n "$f" 2>/tmp/_t; then ok "$f"; else bad "$f"; sed 's/^/       /' /tmp/_t; fi
-done < <(files '*.sh')
+done < <(shell_files)
 
 # 2. Python compiles --------------------------------------------------------
 hdr "Python compile (py_compile)"
@@ -66,12 +80,26 @@ QMLDIR="9-gpu-effects/interactive-bg/contents/ui"
 if [ -d "$QMLDIR" ] && python3 -c "import PyQt6" 2>/dev/null; then
   out="$(QT_QPA_PLATFORM=offscreen python3 tests/qml_instantiate.py \
            "$QMLDIR/AuroraSlider.qml" "$QMLDIR/AuroraColorButton.qml" \
-           "$QMLDIR/AuroraComboBox.qml" "$QMLDIR/config.qml" 2>&1)"
+           "$QMLDIR/AuroraComboBox.qml" "$QMLDIR/AuroraSwatch.qml" \
+           "$QMLDIR/AuroraThemeGrid.qml" "$QMLDIR/AuroraStyleLayer.qml" \
+           "$QMLDIR/AuroraSegmented.qml" "$QMLDIR/BridgeStatus.qml" \
+           "$QMLDIR/AuroraPreview.qml" "$QMLDIR/config.qml" 2>&1)"
   printf '%s\n' "$out"
   pass=$((pass + $(grep -c '  PASS' <<<"$out")))
   fail=$((fail + $(grep -c '  FAIL' <<<"$out")))
 else
   skp "PyQt6 / aurora UI not available (QML instantiation)"
+fi
+
+# Nimbus Launchpad config UI (the launcher's own QML needs a live plasmoid +
+# the kicker engine, so only the instantiable config dialog is checked here).
+LPDIR="9-gpu-effects/launchpad/com.nimbus.launchpad/contents"
+if [ -d "$LPDIR/ui" ] && python3 -c "import PyQt6" 2>/dev/null; then
+  out="$(QT_QPA_PLATFORM=offscreen python3 tests/qml_instantiate.py \
+           "$LPDIR/ui/ConfigGeneral.qml" "$LPDIR/config/config.qml" 2>&1)"
+  printf '%s\n' "$out"
+  pass=$((pass + $(grep -c '  PASS' <<<"$out")))
+  fail=$((fail + $(grep -c '  FAIL' <<<"$out")))
 fi
 
 # Summary -------------------------------------------------------------------

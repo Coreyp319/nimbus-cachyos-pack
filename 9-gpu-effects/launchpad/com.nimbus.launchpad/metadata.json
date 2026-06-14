@@ -1,0 +1,22 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "coreypreston@gmail.com",
+                "Name": "Corey Preston"
+            }
+        ],
+        "Category": "Application Launchers",
+        "Description": "Full-screen Big Sur Launchpad with a blur-and-zoom intro/outro. Reuses Plasma's kicker engine (app DB + KRunner search); Nimbus-styled.",
+        "Icon": "view-app-grid",
+        "Id": "com.nimbus.launchpad",
+        "License": "GPL-3.0-or-later",
+        "Name": "Nimbus Launchpad",
+        "Version": "0.1"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-Provides": [
+        "org.kde.plasma.launchermenu"
+    ]
+}

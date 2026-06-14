@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+      http://www.kde.org/standards/kcfg/1.0/kcfg.xsd" >
+  <kcfgfile name=""/>
+
+  <group name="General">
+    <!-- Panel button icon. The dock-swap (apply.sh) writes view-app-grid to
+         match the Launchpad look; change it here to use any icon. -->
+    <entry name="icon" type="String">
+      <default>view-app-grid</default>
+    </entry>
+
+    <entry name="columns" type="Int">
+      <label>Apps per row in the grid</label>
+      <default>7</default>
+    </entry>
+    <entry name="iconSize" type="Int">
+      <label>App icon size in pixels</label>
+      <default>64</default>
+    </entry>
+    <entry name="showLabels" type="Bool">
+      <label>Show application names under icons</label>
+      <default>true</default>
+    </entry>
+
+    <!-- Intro/outro motion. Duration is the open time; close runs at ~0.8x.
+         backdropDim is the darkness of the scrim over the (KWin-blurred) desktop;
+         introBlur rolls a GPU blur off the grid as it zooms in. -->
+    <entry name="animationDuration" type="Int">
+      <label>Open animation duration in milliseconds (modal range; close runs at 0.7x)</label>
+      <default>300</default>
+    </entry>
+    <entry name="backdropDim" type="Double">
+      <label>Backdrop darkness over the blurred desktop (0 clear .. 0.8 dark)</label>
+      <default>0.45</default>
+    </entry>
+    <entry name="introBlur" type="Bool">
+      <label>Blur the grid as it zooms in/out (Big Sur feel)</label>
+      <default>true</default>
+    </entry>
+
+    <!-- App favourites, stored by the KActivities stats backend (same store the
+         engine uses); written via the right-click "Add to Favourites" action. -->
+    <entry name="favorites" type="StringList">
+      <default></default>
+    </entry>
+  </group>
+</kcfg>

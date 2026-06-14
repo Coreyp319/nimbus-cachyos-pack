@@ -549,6 +549,12 @@ PlasmoidItem {
 }
 EOF
 
+# Dock launcher: the Nimbus Launchpad (full-screen blur-and-zoom app launcher,
+# Layer 9) if it's installed, else the stock Application Dashboard. Both take the
+# "icon" config key + view-app-grid icon, so the rest of this block is unchanged.
+LAUNCHER_PLUGIN=org.kde.plasma.kickerdash
+[ -d "$HOME/.local/share/plasma/plasmoids/com.nimbus.launchpad" ] && LAUNCHER_PLUGIN=com.nimbus.launchpad
+
 DOCK_OUT=$(qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript '
 var ps = panels();
 for (var i=0;i<ps.length;i++){
@@ -560,7 +566,7 @@ var dock = new Panel;
 dock.location="bottom"; dock.height=56;
 try{dock.floating=true;}catch(e){} try{dock.alignment="center";}catch(e){} try{dock.lengthMode="fit";}catch(e){}
 try{dock.hiding="autohide";}catch(e){}
-var launcher = dock.addWidget("org.kde.plasma.kickerdash");
+var launcher = dock.addWidget("'"$LAUNCHER_PLUGIN"'");
 launcher.currentConfigGroup=["General"];
 launcher.writeConfig("icon","view-app-grid");
 launcher.writeConfig("appNameFormat",0);

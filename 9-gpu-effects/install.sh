@@ -151,4 +151,19 @@ if ask "Interactive aurora wallpaper (cursor-reactive animated background)"; the
   fi
 fi
 
+# ---------------------------------------------------------------------------
+# 4. Nimbus Launchpad (com.nimbus.launchpad) — a full-screen Big Sur app
+#    launcher with a blur-and-zoom intro/outro. Reuses the installed kicker
+#    engine; swaps in for the dock's Application Dashboard (kickerdash).
+# ---------------------------------------------------------------------------
+if ask "Nimbus Launchpad (full-screen app launcher with a blur-and-zoom open/close)"; then
+  msg "Nimbus Launchpad (com.nimbus.launchpad)…"
+  if [ "${XDG_SESSION_TYPE:-}" != "wayland" ]; then
+    warn "needs a Plasma 6 Wayland session — skipping."
+  else
+    bash "$HERE/launchpad/apply.sh"
+    echo "    Revert just this:  bash 9-gpu-effects/launchpad/restore.sh --purge"
+  fi
+fi
+
 msg "Layer 9 done. Log out/in if effects don't take immediately."

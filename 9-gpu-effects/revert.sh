@@ -38,6 +38,12 @@ echo "3/4 Aurora wallpaper → previous…"
 [ -f "$HERE/interactive-bg/restore.sh" ] && bash "$HERE/interactive-bg/restore.sh" "$PURGE" || \
   echo "    interactive-bg/restore.sh missing — skipped."
 
+echo "3b/4 Nimbus Launchpad → previous dock launcher…"
+# Swaps the dock's launcher back to what it replaced (kickerdash); --purge also
+# removes the installed plasmoid.
+[ -f "$HERE/launchpad/restore.sh" ] && bash "$HERE/launchpad/restore.sh" "$PURGE" || \
+  echo "    launchpad/restore.sh missing — skipped."
+
 echo "4/4 Packages / build…"
 if [ "$PURGE" = "--purge" ]; then
   for h in paru yay; do command -v "$h" >/dev/null 2>&1 && { "$h" -Rns --noconfirm kwin-effects-glass-git kwin-effects-forceblur 2>/dev/null; break; }; done
