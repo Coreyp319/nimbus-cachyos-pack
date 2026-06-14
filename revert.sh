@@ -2,7 +2,7 @@
 # Master revert — a thin front-end over `nimbus revert`, plus the special one-way
 # Layer 1 teardown the manifest can't express. Pass --purge to also delete files/
 # packages; -n/--dry-run to preview without changing anything.
-#   Layers 2–10 revert via nimbus.layers (single source of truth, reverse order).
+#   Layers 2–11 revert via nimbus.layers (single source of truth, reverse order).
 #   Layer 1 (base) scripts its self-contained user-level bits (toggle, keybind,
 #   dock separator, dock-margin SVG) below; the Global-Theme reset + panel removal
 #   stay MANUAL — they depend on your chosen replacement.
@@ -16,7 +16,7 @@ for a in "$@"; do case "$a" in
   -h|--help)     echo "Usage: bash revert.sh [--purge] [-n|--dry-run]"; exit 0 ;;
 esac; done
 
-# Layers 10→2 in reverse install order, driven by the manifest (no duplicate
+# Layers 11→2 in reverse install order, driven by the manifest (no duplicate
 # ladder). --purge (when given) is forwarded; layers with no purge mode ignore it.
 nargs=(all); [ -n "$PURGE" ] && nargs+=("$PURGE"); [ "$DRY" = 1 ] && nargs+=(-n)
 "$HERE/nimbus" revert "${nargs[@]}"
@@ -54,4 +54,4 @@ echo "   Removed toggle + keybind + dock separator; restored dock margins."
 echo "   STILL MANUAL: System Settings → Global Theme → Breeze (light/dark), then"
 echo "   remove the dock panel (right-click → Enter Edit Mode → Remove Panel)."
 
-echo; echo "Revert complete for layers 2–10 (+ Layer 1 user-level bits). Restart Qt apps to see changes."
+echo; echo "Revert complete for layers 2–11 (+ Layer 1 user-level bits). Restart Qt apps to see changes."
