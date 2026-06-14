@@ -23,9 +23,10 @@ Kirigami.FormLayout {
         valueRole: "value"
         implicitWidth: Kirigami.Units.gridUnit * 16
         model: [
-            { label: i18n("Cyberpunk city"),        value: "cyberpunk" },
-            { label: i18n("Gothic dungeon (Hexen)"), value: "hexen" },
-            { label: i18n("Fluid simulation"),       value: "fluid" }
+            { label: i18n("Cyberpunk city"),         value: "cyberpunk" },
+            { label: i18n("Gothic dungeon (Hexen)"),  value: "hexen" },
+            { label: i18n("Dream journey (evolving)"), value: "journey" },
+            { label: i18n("Fluid simulation"),        value: "fluid" }
         ]
         currentIndex: Math.max(0, indexOfValue(cfg.cfg_Scene))
         onActivated: cfg.cfg_Scene = currentValue
