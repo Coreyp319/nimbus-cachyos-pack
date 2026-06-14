@@ -7,10 +7,18 @@ Layers 7–9 add Apple-style notifications, Dolphin Quick Look, and GPU shader
 effects. Nine independent layers — install any subset.
 
 ```bash
-bash install.sh          # interactive, pick layers
-bash install.sh -y       # install all nine, no prompts
+git clone https://github.com/Coreyp319/nimbus-cachyos-pack && cd nimbus-cachyos-pack
+./nimbus preflight       # check your system is supported (Arch / Plasma 6 / Wayland)
+bash install.sh -n -y    # DRY RUN — preview every action, change nothing
+bash install.sh          # interactive, pick layers (Y/n each; -y installs all)
+./nimbus status          # per-layer health afterward (./nimbus doctor for detail)
 bash revert.sh           # undo (add --purge to delete installed files)
 ```
+
+New to it? `./nimbus preflight` first, then a dry run (`-n`), then install a couple of
+low-risk layers — `./nimbus install 2 7 8` — before the full **Layer 1** transformation
+(it replaces your panel/dock and restarts the shell). `./nimbus help` lists every command;
+everything is reversible with `bash revert.sh`.
 
 > Run as your **normal user** (not root). `sudo` is used for packages, Layer 3's
 > milou patch, Layer 4's SDDM theming, and Layer 5's installs. **Log out / back
@@ -199,7 +207,7 @@ scene graph; this layer just changes *which* shaders run). Three opt-in items:
   ⚠ **These forks ignore `qdbus6 …/KWin reconfigure`** — after editing their config you
   must re-apply via the `/Effects` D-Bus interface
   (`org.kde.kwin.Effects.reconfigureEffect glass`), or the change silently does nothing.
-  The bundled skill (`.claude/skills/kwin-gpu-effects/`) and its inspector handle this.
+  The bundled skill (`.claude/skills/gpu-effects/`) and its inspector handle this.
 - **Desktop shaders** (`kwin-effect-shaders`, built from source) — a single-pass GLSL
   post-process over the **final composited image**, a ReShade/vkBasalt equivalent for the
   whole desktop. Ships **CAS** (contrast-adaptive sharpening), FakeHDR, deband, tonemap,
@@ -215,6 +223,14 @@ scene graph; this layer just changes *which* shaders run). Three opt-in items:
   motion/vividness sliders — all in *Wallpaper → Configure*. Installs via
   `interactive-bg/apply.sh`, saving the prior wallpaper for a faithful revert. See
   `interactive-bg/README.md`.
+- **Nimbus Launchpad** (`com.nimbus.launchpad`, in `launchpad/`) — a full-screen Big Sur
+  app launcher with a **blur-and-zoom intro/outro**. Reuses Plasma's kicker engine (app
+  DB + KRunner search + favourites) inside the frameless `DashboardWindow`, but supplies
+  its own content + the pure-QML open/close motion (scrim fade, grid zoom `0.92→1`, GPU
+  blur roll-off; ~300 ms, honours *reduce motion*). Shows all apps in a centred grid;
+  type to filter via KRunner; Esc / click-away to dismiss.
+  `launchpad/apply.sh` swaps it onto the dock in place of the stock Application Dashboard;
+  `restore.sh` reverses it. See `launchpad/README.md`.
 
 **Wayland only** in practice — X11 disables compositing for fullscreen apps. All are pure
 GLSL on the OpenGL backend (KWin's Vulkan backend is still experimental as of 2026).
