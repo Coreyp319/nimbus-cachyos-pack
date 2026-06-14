@@ -30,7 +30,7 @@ cat <<'NOTICE'
   │   Nimbus macOS-style desktop pack — CachyOS / KDE Plasma 6 (Wayland) │
   └──────────────────────────────────────────────────────────────────────┘
 
-  TEN LAYERS (pick any):
+  ELEVEN LAYERS (pick any):
     1) Base mac desktop  — the full WhiteSur transformation. REPLACES your
        panel/dock, restarts plasmashell, sets Firefox to follow system theme.
     2) Settings refine   — uniform monochrome icons for System Settings
@@ -66,6 +66,10 @@ cat <<'NOTICE'
        an app, drag to push, react to with 1/2/3 + D. Needs the Rust toolchain;
        builds a release binary + adds an app-menu launcher. Separate from the
        desktop — the wallpaper's own "Liquid" style is the integrated version.
+   11) Cross-app uniformity — the hold-out apps that draw their own UI (Firefox,
+       the Chromium family, Electron, Flatpak) pushed onto the system WhiteSur
+       window frame + light/dark, using durable settings only (no userChrome /
+       .crx). Each family is opt-in; every touched key is snapshotted. Reversible.
 
   REQUIREMENTS:  Arch/CachyOS · KDE Plasma 6 · Wayland · run as normal user.
   REVERSIBLE:    ./revert.sh  (undoes every layer; --purge also deletes files).
