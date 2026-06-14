@@ -45,21 +45,29 @@ BIN="$HOME/.local/bin/nimbus-quicklook-ensure"
 UNIT="nimbus-quicklook-ensure.service"
 NAME='servicemenu_nimbus-quicklook.desktop::quickLook'   # ServiceMenuShortcutManager naming
 
-# --- 1. previewer: kiview from git master (built via the bundled PKGBUILD) ----
+# --- 1. previewer: kiview from git master ------------------------------------
 # The AUR `kiview` (v1.1) only has the D-Bus "grab the active Dolphin selection"
 # mode, which toggles your selection and errors out from a service menu. master
-# adds `kiview -s <file>` (direct path preview) — what we invoke below.
-msg "Building kiview from git master (bundled PKGBUILD)…"
+# adds `kiview -s <file>` (direct path preview) — what we invoke below. We prefer
+# the `kiview-git` AUR package (one `paru -S`, cached, no base-devel); if it isn't
+# published / no AUR helper is present, we build it from the bundled PKGBUILD
+# (the same recipe — see packaging/aur/ + publish.sh).
+msg "Installing kiview (git master)…"
 if pacman -Qq kiview-git >/dev/null 2>&1; then
   ok "kiview-git already installed"
 else
-  command -v makepkg >/dev/null 2>&1 || { warn "base-devel/makepkg missing — install it first"; exit 1; }
   # Drop the stock AUR kiview (v1.1) first; it lacks the direct-preview mode.
   pacman -Qq kiview >/dev/null 2>&1 && sudo pacman -R --noconfirm kiview 2>/dev/null || true
-  BUILD="$(mktemp -d)"; cp "$HERE/PKGBUILD" "$BUILD/"
-  ( cd "$BUILD" && makepkg -si --noconfirm ) || { warn "kiview build failed — aborting"; rm -rf "$BUILD"; exit 1; }
-  rm -rf "$BUILD"
-  ok "kiview-git built + installed"
+  AUR=""; for h in paru yay; do command -v "$h" >/dev/null 2>&1 && { AUR="$h"; break; }; done
+  if [ -n "$AUR" ] && "$AUR" -S --needed --noconfirm kiview-git 2>/dev/null; then
+    ok "kiview-git installed from AUR ($AUR)"
+  else
+    command -v makepkg >/dev/null 2>&1 || { warn "base-devel/makepkg missing — install it first"; exit 1; }
+    BUILD="$(mktemp -d)"; cp "$HERE/PKGBUILD" "$BUILD/"
+    ( cd "$BUILD" && makepkg -si --noconfirm ) || { warn "kiview build failed — aborting"; rm -rf "$BUILD"; exit 1; }
+    rm -rf "$BUILD"
+    ok "kiview-git built + installed (from bundled PKGBUILD)"
+  fi
 fi
 
 # --- 2. the Dolphin service menu (the action Space will trigger) -------------

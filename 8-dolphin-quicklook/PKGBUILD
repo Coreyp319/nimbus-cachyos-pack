@@ -6,7 +6,7 @@
 # menu. master adds a direct `kiview -s <file>` mode that previews a path with
 # no D-Bus/selection dance — which is exactly how this layer invokes it.
 pkgname=kiview-git
-pkgver=r0
+pkgver=r117.g40f2939   # placeholder; pkgver() recomputes from git at build time
 pkgrel=1
 pkgdesc="Quick file preview for Dolphin (git master — adds direct file-path preview)"
 arch=('x86_64')
