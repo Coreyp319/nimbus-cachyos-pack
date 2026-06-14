@@ -119,6 +119,9 @@ def main() -> int:
                     help="JUDGE model — MUST discriminate (qwen3.6-27b does; gemma4-64k rubber-stamps)")
     ap.add_argument("--cam", default="")
     ap.add_argument("--timeout", type=int, default=300)
+    ap.add_argument("--knobs", default="",
+                    help="comma-separated subset the proposer may pick (e.g. only knobs that "
+                         "transfer to the RT wallpaper); default = all")
     ap.add_argument("--dry-propose", action="store_true",
                     help="only print proposals; don't set/capture/judge/accept")
     args = ap.parse_args()
@@ -128,6 +131,15 @@ def main() -> int:
               "to establish one first.", file=sys.stderr)
         return 1
     knobs = knob_surface()
+    if args.knobs:
+        want = [k.strip() for k in args.knobs.split(",") if k.strip()]
+        bad = [k for k in want if k not in knobs]
+        if bad:
+            print(f"error: unknown knob(s) in --knobs: {bad}. known: {', '.join(knobs)}",
+                  file=sys.stderr)
+            return 2
+        knobs = {k: knobs[k] for k in want}
+        print(f"proposer restricted to: {', '.join(knobs)}")
     history = []
 
     for i in range(1, args.iterations + 1):
