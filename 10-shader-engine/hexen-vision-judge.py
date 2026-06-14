@@ -7,6 +7,13 @@ hands a vision model the BEFORE (last-good baseline) and AFTER (the just-capture
 plus the aesthetic rubric, and asks for a strict verdict — better or worse, and why. The
 caller (`hexen-tune.py accept` / `revert`) acts on the verdict.
 
+JUDGE CHOICE MATTERS — verified 2026-06-14: `gemma4-64k` (8B) is a RUBBER STAMP — it
+returned "better @0.95" even on a deliberately-WORSE frame (a dark flat wash), with a
+confabulated reason. `qwen3.6-27b-64k` discriminated correctly in BOTH directions (worse
+-> false, swapped -> true) with grounded reasons, so it is the default judge. A confabulating
+judge makes the whole loop meaningless (it accepts noise) — always sanity-check a new judge
+model against a known-worse pair before trusting it (cf. memory `verify-effect-not-command`).
+
 It talks to Ollama's /api/chat with both frames as base64 images in one user turn, so the
 model compares them directly. Output is parsed tolerantly (small models wrap JSON in
 prose) into: {"better", "reason", "artifacts", "confidence"}.
@@ -77,7 +84,8 @@ def main() -> int:
     ap.add_argument("--before", required=True, help="baseline PNG (current best)")
     ap.add_argument("--after", required=True, help="candidate PNG (just captured)")
     ap.add_argument("--goal", default="", help="what knob changed and why (context for the model)")
-    ap.add_argument("--model", default="gemma4-64k:latest", help="Ollama vision model tag")
+    ap.add_argument("--model", default="qwen3.6-27b-64k:latest",
+                    help="Ollama vision model tag (qwen3.6-27b discriminates; gemma4-64k rubber-stamps)")
     ap.add_argument("--timeout", type=int, default=300)
     args = ap.parse_args()
 

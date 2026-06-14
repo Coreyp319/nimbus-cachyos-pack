@@ -14,8 +14,9 @@ the model edits *validated data, never code*. Built as a **3-knob spike** (prove
 | Piece | What it does |
 |---|---|
 | `scene_hexen.rs::HexenTuning` | Deserializes `NIMBUS_FLUX_HEXEN_TUNING` (a JSON path) at `setup()`. **Missing/invalid → the hardcoded defaults.** Every field is **clamp-bounded on load** — the renderer never trusts the file. Only **raster/shared** values are externalized; the `if rt {…}` lighting stays the DLSS session's. |
-| `hexen-tune.py` | Guardrail manager: `set` (clamp+stage) · `capture` (run binary, save frame) · `accept` (promote tuning→last-good + capture→baseline + **ledger**) · `revert` (restore last-good) · `show`/`ledger`. |
-| `hexen-vision-judge.py` | The **look** step: hands BEFORE+AFTER frames + the rubric to a local Ollama vision model (`gemma4-64k` / `qwen3.6-27b-64k`), returns a strict `{better,reason,artifacts,confidence}` verdict. Exit 0 = keep, 10 = revert. |
+| `hexen-tune.py` | Guardrail manager: `set` (clamp+stage) · `capture` (run binary + **retry** on swapchain contention, save frame) · `accept` (promote tuning→last-good + capture→baseline + **ledger**) · `revert` (restore last-good) · `show`/`ledger`/`knobs`. |
+| `hexen-vision-judge.py` | The **look** step: hands BEFORE+AFTER frames + the rubric to a local Ollama vision model, returns a strict `{better,reason,artifacts,confidence}` verdict. Exit 0 = keep, 10 = revert. **Default model `qwen3.6-27b-64k` (discriminates); NOT gemma4-64k (rubber-stamps)** — see below. |
+| `hexen-autotune.py` | The **autonomous driver**: PROPOSE (vision model picks one knob from `baseline.png`) → set → capture → JUDGE → accept\|revert → ledger, looping N times. Separate `--model` (proposer) and `--judge-model` (the integrity-critical one). |
 | `~/.nimbus/hexen-tune/` | State: `tuning.json` (live knobs the scene reads), `last-good.json` (revert target), `baseline.png` (comparison anchor), `captures/`, `ledger.jsonl`. Not in the repo — machine state, like `~/.hermes/ui-audit/`. |
 
 ## Knob surface (the 3-knob spike — ranges mirror the Rust clamps)
@@ -24,11 +25,18 @@ the model edits *validated data, never code*. Built as a **3-knob spike** (prove
 | `wall_roughness` | 0.7 | 0.5–0.95 | hero brick gloss; lower = wetter, reveals relief |
 | `wall_depth` | 0.045 | 0.0–0.06 | hero brick parallax; **>0.06 smears** the stretched UV |
 | `moonlight` | 850 | 400–1400 | cool key illuminance (raster); warm/cool contrast = depth |
+| `floor_roughness` | 0.45 | 0.35–0.7 | floor gloss; lower = wetter flagstone glint |
+| `floor_depth` | 0.03 | 0.0–0.05 | floor parallax relief |
+| `ambient` | 42 | 25–80 | `AmbientLight` fill (raster); lower = deeper shadows |
+| `fog_density` | 0.007 | 0.004–0.012 | `DistanceFog` far-fade depth vs. detail wash |
+| `fogvolume_density` | 0.028 | 0.015–0.05 | god-ray haze vs. curtaining |
 
-The full knob table (floor/ceiling/torch/fog/props/…) is in `HEXEN-REFINEMENT-HANDOFF.md`.
-To **widen**: add the field to `KNOBS` in `hexen-tune.py` **and** to `HexenTuning` (struct +
-`Default` + clamped `load`) in `scene_hexen.rs`, then rebuild once. After that, tuning that
-field is data-only again.
+`./hexen-tune.py knobs` emits this surface as JSON (the single source the autotuner reads).
+The remaining levers (ceiling/torch/props/…) are in `HEXEN-REFINEMENT-HANDOFF.md`. To **widen**:
+add the field to `KNOBS` in `hexen-tune.py` **and** to `HexenTuning` (struct + `Default` +
+clamped `load`) in `scene_hexen.rs`, then rebuild once. After that, tuning that field is
+data-only again. (torch intensity/range need a `spawn_torch` signature change, so they're not
+in the spike's single-literal set yet.)
 
 ## One iteration (what the loop runs)
 ```bash
@@ -53,11 +61,40 @@ differ ONLY by the knob; `--cam dolly` lets it glide; `--rt` previews the RT pat
 names the frame. The launcher/loop always runs the **newest** of `target/{release,debug}`.
 
 ## Running it autonomously (the "ongoing basis" ask)
-Wrap steps 1–4 in a driver that, per iteration: picks one goal from the rubric, picks one
-knob + delta, runs the four commands, and branches on `hexen-vision-judge.py`'s exit code
-(0 → `accept`, 10 → `revert`). The vision model is the judge; `gemma4-64k` and
-`qwen3.6-27b-64k` are both vision-capable. A text-only model (Hermes) can drive the
-*parameter search* but still needs a vision model (or a human) for the look.
+`hexen-autotune.py` IS that driver — no human in the loop. Per iteration it: shows the
+vision model the current best (`baseline.png`) and asks for ONE `{knob,value,goal}`
+(PROPOSE), then `set` → `capture` → `hexen-vision-judge.py` (JUDGE) → `accept` (exit 0) or
+`revert` (exit 10), ledgering each accept. It only orchestrates the three single-purpose
+tools, so all guardrails live in one place and a bad proposal is harmless (clamped,
+rendered, judged, reverted).
+```bash
+./hexen-autotune.py --iterations 5                 # gemma proposes, qwen judges (defaults)
+./hexen-autotune.py --iterations 3 --dry-propose   # just print what it would try
+```
+
+### ⚠️ The judge model is the make-or-break choice (verified 2026-06-14)
+A confabulating judge makes the whole loop worthless — it accepts noise and regressions.
+**`gemma4-64k` (8B) RUBBER-STAMPS**: it returned `better @0.95` even on a deliberately-WORSE
+frame (a dark, flat, low-contrast wash), with a confident confabulated reason.
+**`qwen3.6-27b-64k` DISCRIMINATES**: correct in both directions (worse→false, swapped→true)
+with grounded reasons, and it caught a real in-loop regression (an added-fog change that
+"washes out contrast and softens speculars"). So **qwen is the default judge**; gemma is
+fine only as the *proposer* (`--model` = proposer, `--judge-model` = judge). **Always
+sanity-check a new judge model against a known-worse pair before trusting it** — this is the
+vision-form of the Hermes-confabulation lesson (`ui-audit-toolkit`, `verify-effect-not-command`).
+A text-only model (Hermes) can drive the *parameter search* but still needs a discriminating
+vision model (or a human) for the look.
+
+### ⚠️ Capture reliability under the live RT wallpaper
+The windowed capture competes with the live **RT hexen wallpaper** for the NVIDIA swapchain;
+under contention bevy panics `Couldn't get swap chain texture … timeout` (the known
+NVIDIA+Wayland caveat). It's intermittent — `capture` retries (`--retries`, default 3) and
+usually recovers, but a hard wedge can fail every attempt (the loop then safely *reverts*,
+losing only that iteration). GPU util/VRAM were NOT the limit (39% / 5 GB) and a trivial
+`vkcube` window presented fine — the heavy capture just loses the race. Robust fixes, in
+order: **(a)** run the loop when hexen is **not** the active live wallpaper (captures were
+reliable then); **(b)** add an **offscreen/headless** render path (no swapchain) — the right
+architecture for an unattended nightly loop, and the clean long-term fix.
 
 **Guardrails (non-negotiable):** clamp every knob (enforced twice — script + renderer);
 **one knob per iteration** (the judge must be able to attribute the change); **always
@@ -75,9 +112,19 @@ build so the optimized binary goes live. Kept env-gated on purpose so an in-prog
 never surprises the live desktop or the DLSS session.
 
 ## Status
-- 2026-06-14: spike built + verified. Proved the data-driven path mechanically (two
-  captures, two JSON values, **one binary, no rebuild** → different renders) and ran one
-  full vision-judged iteration: `moonlight 850→1150` judged *better* (conf 0.95) by
-  `gemma4-64k`, human-confirmed grounded, accepted + ledgered. The Rust externalization is
-  applied/built on disk; left for a coordinated commit because `scene_hexen.rs` is the
-  DLSS session's untracked file too.
+- 2026-06-14 (spike): proved the data-driven path mechanically (two JSON values, **one
+  binary, no rebuild** → different renders) and one human-confirmed vision-judged iteration
+  (`moonlight 850→1150`, accepted + ledgered).
+- 2026-06-14 (widen + autonomy): widened to **8 knobs** (added floor_roughness/floor_depth/
+  ambient/fog_density/fogvolume_density — all single-literal raster/shared); built
+  `hexen-autotune.py` and ran it end-to-end (PROPOSE→capture→JUDGE→accept|revert→ledger),
+  with safe degradation verified (failed captures revert, no bad state).
+- **Judge finding (the important one):** `gemma4-64k` rubber-stamps (`better @0.95` on a
+  worse frame); `qwen3.6-27b-64k` discriminates (both directions + caught a real regression)
+  → made the default judge. The gemma-rubber-stamped `wall_depth`/`fog` accepts were
+  re-judged by qwen and **reverted**; live tuning reset to the verified anchor `moonlight=1150`.
+- **Open:** capture is intermittently wedged by the live RT wallpaper (retries help, not a
+  cure) — offscreen render is the clean fix. Rust externalization (now 8 knobs) is
+  applied/built **on disk, uncommitted** — `scene_hexen.rs` is the DLSS session's untracked
+  file; commit it together with their next sync. The accepted tuning is still inert on the
+  live wallpaper until the launcher exports `NIMBUS_FLUX_HEXEN_TUNING` (the go-live step).

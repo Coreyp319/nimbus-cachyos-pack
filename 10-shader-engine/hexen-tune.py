@@ -43,6 +43,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -65,9 +66,14 @@ DEFAULT_CAM = "0,2.2,23,0,0.4,9"
 # Knob -> (lo, hi, default). Ranges MIRROR scene_hexen.rs::HexenTuning::load. Widen this
 # table (and the Rust struct) together when graduating past the spike.
 KNOBS = {
-    "wall_roughness": (0.5, 0.95, 0.7),    # hero brick gloss; lower = wetter, reveals relief
-    "wall_depth":     (0.0, 0.06, 0.045),  # hero brick parallax; >0.06 smears the stretched UV
-    "moonlight":      (400.0, 1400.0, 850.0),  # cool key illuminance (raster); warm/cool = depth
+    "wall_roughness":    (0.5, 0.95, 0.7),     # hero brick gloss; lower = wetter, reveals relief
+    "wall_depth":        (0.0, 0.06, 0.045),   # hero brick parallax; >0.06 smears the stretched UV
+    "moonlight":         (400.0, 1400.0, 850.0),  # cool key illuminance (raster); warm/cool = depth
+    "floor_roughness":   (0.35, 0.7, 0.45),    # floor gloss; lower = wetter flagstone glint
+    "floor_depth":       (0.0, 0.05, 0.03),    # floor parallax relief
+    "ambient":           (25.0, 80.0, 42.0),   # AmbientLight fill (raster); lower = deeper shadows
+    "fog_density":       (0.004, 0.012, 0.007),  # DistanceFog far-fade vs. detail wash
+    "fogvolume_density": (0.015, 0.05, 0.028),   # god-ray haze vs. curtaining
 }
 
 
@@ -212,24 +218,40 @@ def cmd_capture(args) -> int:
     if args.rt:
         env["NIMBUS_FLUX_RT"] = "1"  # opt-in RT preview; default is the raster path we tune
 
-    FRAME.unlink(missing_ok=True)
     print(f"capture: {binary.name} (mtime {datetime.fromtimestamp(binary.stat().st_mtime)}) "
           f"cam={cam} tuning={fmt(current())}")
-    try:
-        p = subprocess.run([str(binary)], env=env, cwd=str(CRATE),
-                           capture_output=True, text=True, timeout=args.timeout)
-    except subprocess.TimeoutExpired:
-        print("error: capture timed out (the window app didn't exit). Is a Wayland/X "
-              "display reachable?", file=sys.stderr)
-        return 1
+    # The windowed capture competes with the live RT wallpaper for the NVIDIA swapchain;
+    # under contention bevy panics with "Couldn't get swap chain texture ... timeout". It's
+    # often intermittent, so retry a few times with a short settle. A HARD wedge (every
+    # attempt times out) means the live RT hexen wallpaper is saturating the GPU — render
+    # offscreen, or run the loop when hexen isn't the active wallpaper (see HEXEN-TUNING-LOOP.md).
+    p = None
+    for attempt in range(1, args.retries + 1):
+        FRAME.unlink(missing_ok=True)
+        try:
+            p = subprocess.run([str(binary)], env=env, cwd=str(CRATE),
+                               capture_output=True, text=True, timeout=args.timeout)
+        except subprocess.TimeoutExpired:
+            print(f"  attempt {attempt}/{args.retries}: timed out (window app didn't exit)",
+                  file=sys.stderr)
+            continue
+        if FRAME.exists():
+            break
+        swap = any("swap chain" in l.lower() for l in (p.stdout + p.stderr).splitlines())
+        why = "GPU swapchain timeout (RT-wallpaper contention)" if swap else "no frame written"
+        print(f"  attempt {attempt}/{args.retries}: {why}", file=sys.stderr)
+        if attempt < args.retries:
+            time.sleep(2)
     # Surface the tuning-load line so the operator can confirm the knobs took effect.
-    for line in (p.stdout + p.stderr).splitlines():
-        if "hexen tuning" in line or "panic" in line.lower():
-            print("  " + line.split("scene_hexen:")[-1].strip())
+    if p is not None:
+        for line in (p.stdout + p.stderr).splitlines():
+            if "hexen tuning" in line:
+                print("  " + line.split("scene_hexen:")[-1].strip())
     if not FRAME.exists():
-        print("error: no frame written to /tmp/nimbus-flux-frame.png — capture failed.",
-              file=sys.stderr)
-        sys.stderr.write("\n".join((p.stdout + p.stderr).splitlines()[-15:]) + "\n")
+        print(f"error: capture failed after {args.retries} attempt(s) — no frame at "
+              "/tmp/nimbus-flux-frame.png.", file=sys.stderr)
+        if p is not None:
+            sys.stderr.write("\n".join((p.stdout + p.stderr).splitlines()[-12:]) + "\n")
         return 1
     label = args.label or f"iter-{stamp()}"
     dst = CAPTURES / f"{label}.png"
@@ -294,6 +316,14 @@ def read_ledger() -> list[dict]:
     return recs
 
 
+def cmd_knobs(args) -> int:
+    """Emit the knob surface as JSON — the single source the autotuner reads for ranges
+    + validation (so the table isn't re-declared in the driver)."""
+    print(json.dumps({k: {"lo": lo, "hi": hi, "default": d}
+                      for k, (lo, hi, d) in KNOBS.items()}, indent=2))
+    return 0
+
+
 def cmd_ledger(args) -> int:
     recs = read_ledger()
     if not recs:
@@ -323,6 +353,8 @@ def main() -> int:
     c.add_argument("--label", default="", help="capture filename stem (default iter-<ts>)")
     c.add_argument("--rt", action="store_true", help="preview the RT path (default: raster)")
     c.add_argument("--timeout", type=int, default=40, help="seconds before giving up")
+    c.add_argument("--retries", type=int, default=3,
+                   help="relaunch attempts on swapchain-timeout/no-frame (RT-wallpaper contention)")
 
     a = sub.add_parser("accept", help="promote staged tuning + capture, ledger it")
     a.add_argument("-m", "--message", default="", help="rationale for the accepted change")
@@ -330,11 +362,13 @@ def main() -> int:
 
     sub.add_parser("revert", help="restore last-good.json -> tuning.json")
     sub.add_parser("ledger", help="print the full accept ledger")
+    sub.add_parser("knobs", help="emit the knob surface (ranges/defaults) as JSON")
 
     args = ap.parse_args()
     return {
         "show": cmd_show, "set": cmd_set, "capture": cmd_capture,
         "accept": cmd_accept, "revert": cmd_revert, "ledger": cmd_ledger,
+        "knobs": cmd_knobs,
     }[args.cmd](args)
 
 
